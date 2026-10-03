@@ -1,0 +1,140 @@
+/* Estilos globales de LAB CAR: fuentes locales, tokens de diseño y base. */
+@import '@fontsource-variable/inter';
+@import 'material-symbols/outlined.css';
+@import 'tailwindcss';
+
+@theme {
+  /* Colores */
+  --color-background: #0f131c;
+  --color-on-background: #dfe2ee;
+  --color-surface: #0f131c;
+  --color-surface-dim: #0f131c;
+  --color-surface-bright: #353942;
+  --color-surface-tint: #b4c5ff;
+  --color-surface-variant: #31353e;
+  --color-surface-container-lowest: #0a0e16;
+  --color-surface-container-low: #181c24;
+  --color-surface-container: #1c2028;
+  --color-surface-container-high: #262a33;
+  --color-surface-container-highest: #31353e;
+  --color-on-surface: #dfe2ee;
+  --color-on-surface-variant: #c3c6d7;
+  --color-inverse-surface: #dfe2ee;
+  --color-inverse-on-surface: #2c3039;
+  --color-inverse-primary: #0053db;
+  --color-outline: #8d90a0;
+  --color-outline-variant: #434655;
+
+  --color-primary: #b4c5ff;
+  --color-on-primary: #002a78;
+  --color-primary-container: #2563eb;
+  --color-on-primary-container: #eeefff;
+  --color-primary-fixed: #dbe1ff;
+  --color-primary-fixed-dim: #b4c5ff;
+  --color-on-primary-fixed: #00174b;
+  --color-on-primary-fixed-variant: #003ea8;
+
+  --color-secondary: #adc6ff;
+  --color-on-secondary: #002e6a;
+  --color-secondary-container: #0566d9;
+  --color-on-secondary-container: #e6ecff;
+  --color-secondary-fixed: #d8e2ff;
+  --color-secondary-fixed-dim: #adc6ff;
+  --color-on-secondary-fixed: #001a42;
+  --color-on-secondary-fixed-variant: #004395;
+
+  --color-tertiary: #ffb3ad;
+  --color-on-tertiary: #68000a;
+  --color-tertiary-container: #cf2c30;
+  --color-on-tertiary-container: #ffecea;
+  --color-tertiary-fixed: #ffdad7;
+  --color-tertiary-fixed-dim: #ffb3ad;
+  --color-on-tertiary-fixed: #410004;
+  --color-on-tertiary-fixed-variant: #930013;
+
+  --color-error: #ffb4ab;
+  --color-on-error: #690005;
+  --color-error-container: #93000a;
+  --color-on-error-container: #ffdad6;
+
+  /* Espaciado */
+  --spacing-space-xs: 0.25rem;
+  --spacing-space-sm: 0.5rem;
+  --spacing-space-md: 1rem;
+  --spacing-space-lg: 1.5rem;
+  --spacing-space-xl: 2rem;
+  --spacing-margin: 2rem;
+  --spacing-margin-mobile: 1rem;
+  --spacing-gutter: 1.25rem;
+  --spacing-gutter-mobile: 0.75rem;
+
+  /* Tipografía */
+  --font-sans: 'Inter Variable', system-ui, sans-serif;
+  --font-body-sm: var(--font-sans);
+  --font-body-md: var(--font-sans);
+  --font-body-lg: var(--font-sans);
+  --font-label-sm: var(--font-sans);
+  --font-label-md: var(--font-sans);
+  --font-label-lg: var(--font-sans);
+  --font-headline-md: var(--font-sans);
+  --font-headline-lg: var(--font-sans);
+  --font-headline-xl: var(--font-sans);
+  --font-currency-display: var(--font-sans);
+
+  --text-body-sm: 12px;
+  --text-body-sm--line-height: 16px;
+  --text-body-sm--font-weight: 400;
+  --text-body-md: 14px;
+  --text-body-md--line-height: 20px;
+  --text-body-md--font-weight: 400;
+  --text-body-lg: 16px;
+  --text-body-lg--line-height: 24px;
+  --text-body-lg--font-weight: 400;
+  --text-label-sm: 11px;
+  --text-label-sm--line-height: 14px;
+  --text-label-sm--letter-spacing: 0.05em;
+  --text-label-sm--font-weight: 600;
+  --text-label-md: 12px;
+  --text-label-md--line-height: 16px;
+  --text-label-md--font-weight: 500;
+  --text-label-lg: 14px;
+  --text-label-lg--line-height: 20px;
+  --text-label-lg--font-weight: 600;
+  --text-headline-md: 20px;
+  --text-headline-md--line-height: 28px;
+  --text-headline-md--font-weight: 600;
+  --text-headline-lg: 24px;
+  --text-headline-lg--line-height: 32px;
+  --text-headline-lg--letter-spacing: -0.01em;
+  --text-headline-lg--font-weight: 600;
+  --text-headline-xl: 32px;
+  --text-headline-xl--line-height: 40px;
+  --text-headline-xl--letter-spacing: -0.02em;
+  --text-headline-xl--font-weight: 700;
+  --text-headline-xl-mobile: 26px;
+  --text-headline-xl-mobile--line-height: 32px;
+  --text-headline-xl-mobile--letter-spacing: -0.01em;
+  --text-headline-xl-mobile--font-weight: 700;
+  --text-currency-display: 28px;
+  --text-currency-display--line-height: 34px;
+  --text-currency-display--letter-spacing: -0.02em;
+  --text-currency-display--font-weight: 700;
+}
+
+@layer base {
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+    color-scheme: dark;
+  }
+  body {
+    overscroll-behavior: none;
+  }
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+  ::-webkit-scrollbar {
+    display: none;
+  }
+}

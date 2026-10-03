@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="es" class="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ingresar · LAB CAR</title>
+    <link rel="icon" type="image/png" href="../assets/images/favicon.png" />
+    <script type="module" src="../ts/pages/login.ts"></script>
+  </head>
+  <body class="bg-surface font-body-md text-body-md text-on-surface antialiased min-h-screen">
+    <main class="w-full bg-surface min-h-screen flex items-center justify-center px-margin-mobile lg:px-margin">
+      <div class="flex flex-col w-full items-center justify-center py-space-xl relative overflow-hidden">
+        <!-- Luces de fondo -->
+        <div class="absolute -top-32 -left-24 w-96 h-96 bg-primary-container/20 rounded-full blur-[120px] pointer-events-none"></div>
+        <div class="absolute -bottom-24 -right-16 w-80 h-80 bg-secondary-container/15 rounded-full blur-[100px] pointer-events-none"></div>
+
+        <!-- Cuadrícula técnica de fondo -->
+        <div class="absolute inset-0 opacity-10 pointer-events-none" aria-hidden="true">
+          <svg height="100%" width="100%" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <pattern id="tech-grid" width="48" height="48" patternUnits="userSpaceOnUse">
+                <path class="text-primary" d="M 48 0 L 0 0 0 48" fill="none" stroke="currentColor" stroke-width="0.7" />
+                <circle class="text-secondary" cx="0" cy="0" r="1.5" fill="currentColor" />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#tech-grid)" />
+          </svg>
+        </div>
+
+        <!-- Tarjeta de acceso -->
+        <div class="relative w-full max-w-[490px] rounded-3xl bg-surface-container-low/95 backdrop-blur-xl shadow-2xl p-space-lg sm:p-space-xl">
+          <div class="flex items-center justify-between mb-space-md">
+            <span class="font-label-sm text-label-sm text-outline tracking-wider">v1.0</span>
+          </div>
+
+          <!-- Encabezado -->
+          <div class="flex flex-col items-center text-center">
+            <h1 class="w-full flex justify-center py-space-xs">
+              <img src="../assets/images/logo.png" alt="LAB CAR" class="h-24 w-auto object-contain drop-shadow-md transition-transform duration-300 hover:scale-[1.02]" />
+            </h1>
+            <p class="font-body-sm text-body-sm text-on-surface-variant max-w-xs mt-space-sm">Estética Automotriz • Medellín</p>
+          </div>
+
+          <!-- Formulario -->
+          <form id="login-form" class="mt-space-md space-y-space-md" novalidate>
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between">
+                <label for="login-user" class="font-label-md text-label-md text-on-surface flex items-center gap-1">
+                  <span class="material-symbols-outlined text-sm text-primary" aria-hidden="true">person</span>Usuario
+                </label>
+                <span class="font-label-sm text-label-sm text-outline">Requerido</span>
+              </div>
+              <div class="relative flex items-center rounded-xl bg-surface-container-highest transition-colors focus-within:bg-surface-container-high focus-within:shadow-md">
+                <span class="material-symbols-outlined absolute left-3.5 text-outline pointer-events-none" aria-hidden="true">account_circle</span>
+                <input id="login-user" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required placeholder="Usuario o correo"
+                  class="w-full bg-transparent pl-11 pr-4 py-3 text-on-surface font-body-md text-body-md placeholder:text-outline focus:outline-none rounded-xl" />
+              </div>
+            </div>
+
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between">
+                <label for="login-password" class="font-label-md text-label-md text-on-surface flex items-center gap-1">
+                  <span class="material-symbols-outlined text-sm text-primary" aria-hidden="true">lock</span>Contraseña
+                </label>
+                <span class="font-label-sm text-label-sm text-outline">Requerido</span>
+              </div>
+              <div class="relative flex items-center rounded-xl bg-surface-container-highest transition-colors focus-within:bg-surface-container-high focus-within:shadow-md">
+                <span class="material-symbols-outlined absolute left-3.5 text-outline pointer-events-none" aria-hidden="true">key</span>
+                <input id="login-password" type="password" autocomplete="current-password" required placeholder="Ingresa tu contraseña"
+                  class="w-full bg-transparent pl-11 pr-11 py-3 text-on-surface font-body-md text-body-md placeholder:text-outline focus:outline-none rounded-xl" />
+                <button id="toggle-pwd-btn" type="button" aria-label="Mostrar u ocultar contraseña" aria-pressed="false"
+                  class="absolute right-3.5 text-outline hover:text-on-surface transition-colors p-1 flex items-center justify-center">
+                  <span id="pwd-icon" class="material-symbols-outlined text-lg" aria-hidden="true">visibility</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between pt-1">
+              <label class="flex items-center gap-2 cursor-pointer select-none group">
+                <input id="remember-me" type="checkbox" checked class="w-4 h-4 rounded cursor-pointer accent-primary-container" />
+                <span class="font-body-sm text-body-sm text-on-surface-variant group-hover:text-on-surface transition-colors">Recordar mi sesión</span>
+              </label>
+              <button id="btn-forgot" type="button" class="font-body-sm text-body-sm text-primary hover:text-secondary-fixed transition-colors font-medium hover:underline">
+                ¿Olvidaste tu contraseña?
+              </button>
+            </div>
+
+            <button id="btn-submit" type="submit"
+              class="w-full group mt-space-md py-3.5 px-6 rounded-2xl bg-linear-to-r from-primary-container to-secondary-container hover:from-blue-600 hover:to-primary-container active:scale-[0.99] disabled:opacity-70 disabled:cursor-wait text-white font-label-lg text-label-lg shadow-lg shadow-primary-container/25 flex items-center justify-center gap-2 transition-all duration-200">
+              <span id="btn-text">Ingresar al Sistema</span>
+              <span class="material-symbols-outlined text-lg transition-transform duration-200 group-hover:translate-x-1" aria-hidden="true">arrow_forward</span>
+            </button>
+
+            <div class="flex items-center gap-space-sm text-outline" aria-hidden="true">
+              <span class="h-px flex-1 bg-outline-variant"></span>
+              <span class="font-label-sm text-label-sm">o</span>
+              <span class="h-px flex-1 bg-outline-variant"></span>
+            </div>
+
+            <button id="btn-google" type="button"
+              class="w-full py-3 px-6 rounded-2xl bg-surface-container-highest hover:bg-surface-bright active:scale-[0.99] disabled:opacity-70 disabled:cursor-wait text-on-surface font-label-lg text-label-lg flex items-center justify-center gap-3 transition-all duration-200">
+              <img src="../assets/images/google.svg" alt="" class="w-5 h-5" />
+              <span>Continuar con Google</span>
+            </button>
+          </form>
+
+          <!-- Pie -->
+          <div class="mt-space-lg text-center flex flex-col items-center gap-1 text-outline">
+            <span class="font-label-sm text-label-sm">Medellín, Colombia</span>
+            <span class="font-body-sm text-body-sm opacity-60">LAB CAR Estética Automotriz SAS</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notificación -->
+      <div id="status-toast" role="status" aria-live="polite"
+        class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 translate-y-20 opacity-0 transition-all duration-300 pointer-events-none px-4 py-3 rounded-xl bg-surface-container-highest shadow-2xl flex items-center gap-3 max-w-sm">
+        <span id="toast-icon" class="material-symbols-outlined text-primary" aria-hidden="true">info</span>
+        <span id="toast-message" class="font-body-sm text-body-sm text-on-surface"></span>
+      </div>
+    </main>
+  </body>
+</html>

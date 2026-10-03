@@ -1,0 +1,13 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Perfiles del sistema. El ID del documento es el correo en minúsculas
+    // (para usuarios sin correo: usuario@usuarios.labcar.local).
+    // Por ahora se crean desde la consola de Firebase.
+    match /users/{email} {
+      allow read: if request.auth != null && request.auth.token.email == email;
+      allow write: if false;
+    }
+  }
+}

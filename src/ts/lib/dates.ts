@@ -80,3 +80,23 @@ export function periodRange(period: Period, offset = 0, now = new Date()): DateR
       return { start: bogotaMidnight(year, month + offset, 1), end: bogotaMidnight(year, month + offset + 1, 1) };
   }
 }
+
+/** Fecha en hora de Colombia como "AAAA-MM-DD" (valor de un <input type="date">). */
+export function toDateInputValue(date: Date): string {
+  const { year, month, day } = toBogotaDay(date);
+  return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+/** Rango de días completos entre dos "AAAA-MM-DD" (ambos incluidos). null si alguna fecha es inválida o están invertidas. */
+export function rangeFromDateInputs(from: string, to: string): DateRange | null {
+  const parse = (value: string) => {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    return match ? { year: Number(match[1]), month: Number(match[2]) - 1, day: Number(match[3]) } : null;
+  };
+  const first = parse(from);
+  const last = parse(to);
+  if (!first || !last) return null;
+  const start = bogotaMidnight(first.year, first.month, first.day);
+  const end = bogotaMidnight(last.year, last.month, last.day + 1);
+  return start < end ? { start, end } : null;
+}

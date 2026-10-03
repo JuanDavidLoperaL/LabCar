@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="es" class="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Historial de Ventas · LAB CAR</title>
+    <link rel="icon" type="image/png" href="../assets/images/favicon.png" />
+    <script type="module" src="../ts/pages/historial.ts"></script>
+  </head>
+  <!-- "invisible" evita mostrar la página antes de validar la sesión -->
+  <body class="invisible bg-surface font-body-md text-body-md text-on-surface antialiased min-h-screen">
+    <main class="relative bg-surface w-full px-gutter-mobile lg:px-gutter pt-space-lg pb-space-xl">
+      <div id="history" class="flex flex-col gap-space-lg">
+        <div class="flex flex-col gap-1">
+          <h1 class="font-headline-lg text-headline-lg">Historial de Ventas</h1>
+          <p id="history-subtitle" class="text-on-surface-variant"></p>
+        </div>
+
+        <!-- Filtros -->
+        <form id="filters" role="search" class="bg-surface-container-low rounded-xl p-space-md shadow-sm grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-12 gap-space-sm items-end">
+          <div class="xl:col-span-4">
+            <label for="filter-search" class="block font-label-sm text-label-sm text-outline mb-1">Placa o cédula/NIT</label>
+            <div class="relative">
+              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px] pointer-events-none" aria-hidden="true">search</span>
+              <input id="filter-search" type="search" autocomplete="off" placeholder="ABC123 o 1020456789"
+                class="w-full h-10 bg-surface-container pl-10 pr-space-sm rounded-lg focus:outline-none focus:ring-1 focus:ring-primary placeholder:text-outline/60" />
+            </div>
+          </div>
+          <div class="xl:col-span-2">
+            <label for="filter-from" class="block font-label-sm text-label-sm text-outline mb-1">Desde</label>
+            <input id="filter-from" type="date" class="w-full h-10 px-space-sm bg-surface-container rounded-lg focus:outline-none focus:ring-1 focus:ring-primary [color-scheme:dark]" />
+          </div>
+          <div class="xl:col-span-2">
+            <label for="filter-to" class="block font-label-sm text-label-sm text-outline mb-1">Hasta</label>
+            <input id="filter-to" type="date" class="w-full h-10 px-space-sm bg-surface-container rounded-lg focus:outline-none focus:ring-1 focus:ring-primary [color-scheme:dark]" />
+          </div>
+          <div id="filter-seller-wrapper" hidden class="xl:col-span-2">
+            <label for="filter-seller" class="block font-label-sm text-label-sm text-outline mb-1">Empleado</label>
+            <select id="filter-seller" class="w-full h-10 px-space-sm bg-surface-container rounded-lg focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer">
+              <option value="">Todos</option>
+            </select>
+          </div>
+          <div class="xl:col-span-2">
+            <label for="filter-status" class="block font-label-sm text-label-sm text-outline mb-1">Estado</label>
+            <select id="filter-status" class="w-full h-10 px-space-sm bg-surface-container rounded-lg focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer">
+              <option value="">Todos</option>
+              <option value="paid">Pagado</option>
+              <option value="pending">Por cobrar</option>
+              <option value="void">Anulada</option>
+            </select>
+          </div>
+          <div class="sm:col-span-2 xl:col-span-12 flex flex-wrap items-center justify-between gap-space-sm">
+            <p id="filter-note" class="font-body-sm text-body-sm text-outline"></p>
+            <div class="flex gap-space-xs">
+              <button id="btn-clear-filters" type="button" class="px-space-md h-10 rounded-lg bg-surface-container-high hover:bg-surface-bright font-label-md text-label-md">Limpiar</button>
+              <button type="submit" class="px-space-md h-10 rounded-lg bg-primary-container text-on-primary-container font-label-md text-label-md font-semibold flex items-center gap-1">
+                <span class="material-symbols-outlined text-[18px]" aria-hidden="true">search</span>Buscar
+              </button>
+            </div>
+          </div>
+          <p id="filter-error" hidden class="sm:col-span-2 xl:col-span-12 font-body-sm text-body-sm text-error"></p>
+        </form>
+
+        <!-- Resumen -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-space-sm">
+          <div class="bg-surface-container rounded-xl p-space-md">
+            <p class="font-label-sm text-label-sm text-outline">Ventas</p>
+            <p id="summary-count" data-skeleton class="font-headline-md text-headline-md font-bold">—</p>
+          </div>
+          <div class="bg-surface-container rounded-xl p-space-md">
+            <p class="font-label-sm text-label-sm text-outline">Total vendido</p>
+            <p id="summary-total" data-skeleton class="font-headline-md text-headline-md font-bold">—</p>
+          </div>
+          <div class="bg-surface-container rounded-xl p-space-md">
+            <p class="font-label-sm text-label-sm text-outline">Por cobrar</p>
+            <p id="summary-pending" data-skeleton class="font-headline-md text-headline-md font-bold text-tertiary">—</p>
+          </div>
+          <div class="bg-surface-container rounded-xl p-space-md">
+            <p id="summary-commission-label" class="font-label-sm text-label-sm text-outline">Comisiones</p>
+            <p id="summary-commission" data-skeleton class="font-headline-md text-headline-md font-bold text-secondary">—</p>
+          </div>
+        </div>
+
+        <!-- Resultados -->
+        <section data-dim-while-loading aria-label="Ventas" class="bg-surface-container rounded-xl p-space-md shadow-md">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left whitespace-nowrap font-body-sm text-body-sm">
+              <thead>
+                <tr class="bg-surface-container-low text-outline font-label-sm text-label-sm uppercase tracking-wider">
+                  <th scope="col" class="px-space-md py-3 rounded-l-lg">Orden</th>
+                  <th scope="col" class="px-space-md py-3">Fecha</th>
+                  <th scope="col" class="px-space-md py-3">Placa / Línea</th>
+                  <th scope="col" class="px-space-md py-3">Servicios</th>
+                  <th scope="col" class="px-space-md py-3">Vendedores</th>
+                  <th scope="col" class="px-space-md py-3">Pago</th>
+                  <th scope="col" class="px-space-md py-3 text-right">Total</th>
+                  <th scope="col" class="px-space-md py-3 text-center">Estado</th>
+                  <th scope="col" class="px-space-md py-3 rounded-r-lg text-center">Factura</th>
+                </tr>
+              </thead>
+              <tbody id="history-rows"></tbody>
+            </table>
+          </div>
+          <p id="history-empty" hidden class="py-space-lg text-center text-on-surface-variant">No hay ventas con estos filtros.</p>
+          <p id="history-limit" hidden class="pt-space-sm text-center font-body-sm text-body-sm text-outline"></p>
+        </section>
+      </div>
+    </main>
+
+    <!-- Detalle de la venta -->
+    <dialog id="sale-dialog" aria-labelledby="detail-title"
+      class="m-auto w-[min(640px,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] rounded-2xl bg-surface-container-low text-on-surface p-0 shadow-2xl backdrop:bg-black/70 backdrop:backdrop-blur-sm">
+      <div class="flex items-start justify-between gap-space-sm p-space-md sm:p-space-lg border-b border-outline-variant/30">
+        <div>
+          <h2 id="detail-title" class="font-headline-md text-headline-md font-bold"></h2>
+          <p id="detail-date" class="font-body-sm text-body-sm text-outline"></p>
+        </div>
+        <div class="flex items-center gap-space-xs">
+          <span id="detail-status" class="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-surface-container-high text-secondary data-[status=pending]:bg-tertiary-container/30 data-[status=pending]:text-tertiary data-[status=void]:bg-error-container/40 data-[status=void]:text-error"></span>
+          <button type="button" data-close-dialog aria-label="Cerrar" class="p-1.5 rounded-lg text-outline hover:text-on-surface hover:bg-surface-container-high flex">
+            <span class="material-symbols-outlined" aria-hidden="true">close</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="p-space-md sm:p-space-lg flex flex-col gap-space-md">
+        <p id="detail-void" hidden class="flex items-start gap-space-xs p-space-sm rounded-lg bg-error-container/30 text-on-error-container font-body-sm text-body-sm">
+          <span class="material-symbols-outlined text-[18px]" aria-hidden="true">block</span>
+          <span id="detail-void-text"></span>
+        </p>
+
+        <div class="flex items-center gap-space-sm bg-surface-container-lowest p-space-sm rounded-xl">
+          <span class="w-1.5 h-9 bg-yellow-400 rounded-full" aria-hidden="true"></span>
+          <div>
+            <span id="detail-plate" class="font-headline-md text-headline-md font-mono font-bold tracking-wider"></span>
+            <span id="detail-vehicle" class="block font-body-sm text-body-sm text-on-surface-variant"></span>
+          </div>
+        </div>
+
+        <ul id="detail-items" class="flex flex-col gap-2"></ul>
+
+        <dl class="bg-surface-container p-space-md rounded-xl space-y-1">
+          <div class="flex justify-between text-outline"><dt>Subtotal</dt><dd id="detail-subtotal" class="text-on-surface"></dd></div>
+          <div class="flex justify-between text-tertiary"><dt>Descuentos</dt><dd id="detail-discount"></dd></div>
+          <div class="flex justify-between font-bold text-headline-md"><dt>Total</dt><dd id="detail-total" class="text-primary"></dd></div>
+          <div class="flex justify-between text-outline pt-1"><dt>Forma de pago</dt><dd id="detail-payment" class="text-on-surface"></dd></div>
+          <div id="detail-due-row" class="flex justify-between text-outline"><dt>Pagar antes de</dt><dd id="detail-due" class="text-on-surface"></dd></div>
+          <div class="flex justify-between text-outline"><dt>Factura electrónica</dt><dd id="detail-invoice" class="text-on-surface text-right"></dd></div>
+        </dl>
+
+        <div>
+          <h3 class="font-label-sm text-label-sm text-outline uppercase tracking-wider mb-space-xs">Vendedores y comisión (<span id="detail-rate"></span>)</h3>
+          <ul id="detail-sellers" class="flex flex-col gap-1"></ul>
+        </div>
+
+        <div id="detail-customer-block">
+          <h3 class="font-label-sm text-label-sm text-outline uppercase tracking-wider mb-space-xs">Cliente</h3>
+          <p id="detail-customer" class="whitespace-pre-line"></p>
+        </div>
+
+        <div id="detail-notes-block">
+          <h3 class="font-label-sm text-label-sm text-outline uppercase tracking-wider mb-space-xs">Notas</h3>
+          <p id="detail-notes" class="whitespace-pre-line text-on-surface-variant"></p>
+        </div>
+
+        <p id="detail-created" class="font-body-sm text-body-sm text-outline"></p>
+
+        <!-- Anulación -->
+        <form id="void-form" hidden class="flex flex-col gap-space-xs p-space-sm rounded-xl bg-surface-container">
+          <label for="void-reason" class="font-label-md text-label-md">Motivo de la anulación *</label>
+          <textarea id="void-reason" rows="2" maxlength="200" required class="w-full p-space-sm bg-surface-container-lowest rounded-lg focus:outline-none focus:ring-1 focus:ring-primary resize-none"></textarea>
+          <p id="void-error" hidden class="font-body-sm text-body-sm text-error"></p>
+          <div class="flex justify-end gap-space-xs">
+            <button id="btn-void-cancel" type="button" class="px-space-md py-2 rounded-lg bg-surface-container-high font-label-md text-label-md">Cancelar</button>
+            <button id="btn-void-confirm" type="submit" class="px-space-md py-2 rounded-lg bg-error-container text-on-error-container font-label-md text-label-md font-semibold disabled:opacity-60">Anular venta</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="flex flex-wrap justify-end gap-space-xs p-space-md sm:p-space-lg border-t border-outline-variant/30">
+        <button id="btn-void" type="button" hidden class="mr-auto px-space-md py-2 rounded-lg text-error hover:bg-error-container/20 font-label-md text-label-md flex items-center gap-1">
+          <span class="material-symbols-outlined text-[18px]" aria-hidden="true">block</span>Anular
+        </button>
+        <a id="detail-whatsapp" target="_blank" rel="noopener" class="px-space-md py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-label-md text-label-md font-semibold flex items-center gap-1">
+          <span class="material-symbols-outlined text-[18px]" aria-hidden="true">chat</span>WhatsApp
+        </a>
+        <button id="btn-reprint" type="button" class="px-space-md py-2 rounded-lg bg-surface-container-high hover:bg-surface-bright font-label-md text-label-md font-semibold flex items-center gap-1">
+          <span class="material-symbols-outlined text-[18px]" aria-hidden="true">print</span>Reimprimir
+        </button>
+      </div>
+    </dialog>
+
+    <template id="tpl-history-row">
+      <tr tabindex="0" class="cursor-pointer hover:bg-surface-container-high focus:bg-surface-container-high focus:outline-none transition-colors data-[status=void]:opacity-60 data-[status=pending]:bg-tertiary-container/5">
+        <td data-field="order" class="px-space-md py-3 font-mono font-bold text-primary"></td>
+        <td data-field="date" class="px-space-md py-3 text-on-surface-variant"></td>
+        <td class="px-space-md py-3">
+          <span data-field="plate" class="font-mono bg-surface-container-lowest text-secondary px-1.5 py-0.5 rounded font-bold text-xs"></span>
+          <span data-field="vehicle-line" class="text-outline"></span>
+        </td>
+        <td data-field="services" class="px-space-md py-3 max-w-56 truncate"></td>
+        <td data-field="sellers" class="px-space-md py-3 max-w-48 truncate"></td>
+        <td data-field="payment" class="px-space-md py-3"></td>
+        <td data-field="total" class="px-space-md py-3 text-right font-bold"></td>
+        <td class="px-space-md py-3 text-center">
+          <span data-field="status" class="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-surface-container-high text-secondary data-[status=pending]:bg-tertiary-container/30 data-[status=pending]:text-tertiary data-[status=void]:bg-error-container/40 data-[status=void]:text-error"></span>
+        </td>
+        <td class="px-space-md py-3 text-center">
+          <span data-field="invoice" class="material-symbols-outlined text-[18px] text-outline data-[invoice=pending]:text-secondary data-[invoice=issued]:text-green-400 data-[invoice=error]:text-error" aria-hidden="true"></span>
+          <span data-field="invoice-label" class="sr-only"></span>
+        </td>
+      </tr>
+    </template>
+
+    <template id="tpl-detail-item">
+      <li class="flex items-start justify-between gap-space-sm">
+        <div class="min-w-0">
+          <span data-field="name" class="font-medium block"></span>
+          <span data-field="discount" class="font-label-sm text-label-sm text-outline"></span>
+        </div>
+        <span data-field="total" class="font-semibold shrink-0"></span>
+      </li>
+    </template>
+
+    <template id="tpl-detail-seller">
+      <li class="flex items-center justify-between">
+        <span data-field="name"></span>
+        <span data-field="commission" class="font-semibold text-secondary"></span>
+      </li>
+    </template>
+  </body>
+</html>

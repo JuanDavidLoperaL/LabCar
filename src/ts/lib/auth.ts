@@ -16,7 +16,6 @@ import { isRole, type Role } from './roles';
 
 export const ROUTES = {
   login: '/html/login.html',
-  home: '/html/panel.html',
 } as const;
 
 /**

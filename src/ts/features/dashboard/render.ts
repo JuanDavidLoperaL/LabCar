@@ -9,7 +9,9 @@ import {
 import { PAYMENT_METHOD_LABELS, SALE_STATUS_LABELS, type Sale } from '../../models/sale';
 import { byId } from '../../ui/dom';
 import { cloneTemplate, field, setField } from '../../ui/template';
-import type { DashboardMetrics, SellerPayout } from './metrics';
+import { formatPlate } from '../sales/plate';
+import { itemsSummary, sellersSummary } from '../sales/summary';
+import type { DashboardMetrics, PayoutEntry, SellerPayout } from './metrics';
 
 const RECENT_SALES_LIMIT = 8;
 
@@ -102,7 +104,7 @@ export function renderAdminDetails(metrics: DashboardMetrics, sales: readonly Sa
   setText('kpi-commissions-value', formatCOP(commissions.total));
   setText('kpi-commissions-detail', pluralize(commissions.payouts.length, 'detallador', 'detalladores'));
 
-  renderRecentSales(sales.slice(0, RECENT_SALES_LIMIT));
+  renderRecentSales(sales.filter((sale) => sale.status !== 'void').slice(0, RECENT_SALES_LIMIT));
   renderPayroll(commissions.total, commissions.payouts);
 }
 
@@ -111,12 +113,12 @@ function renderRecentSales(sales: readonly Sale[]): void {
     const row = cloneTemplate<HTMLTableRowElement>('tpl-sale-row');
     row.dataset.status = sale.status;
     setField(row, 'date', formatShortDateTime(sale.date));
-    setField(row, 'plate', sale.plate || '—');
+    setField(row, 'plate', formatPlate(sale.plate) || '—');
     setField(row, 'vehicle-line', sale.vehicleLine);
-    setField(row, 'customer', sale.customerName);
-    setField(row, 'service', sale.serviceName);
-    setField(row, 'seller-initials', initials(sale.sellerName));
-    setField(row, 'seller', sale.sellerName);
+    setField(row, 'customer', sale.customer?.name || '—');
+    setField(row, 'service', itemsSummary(sale));
+    setField(row, 'seller-initials', initials(sale.sellers[0]?.name ?? '?'));
+    setField(row, 'seller', sellersSummary(sale));
     setField(row, 'method', PAYMENT_METHOD_LABELS[sale.paymentMethod]);
     setField(row, 'total', formatCOP(sale.total));
     setField(row, 'status', SALE_STATUS_LABELS[sale.status]);
@@ -127,16 +129,16 @@ function renderRecentSales(sales: readonly Sale[]): void {
   byId('sales-empty').hidden = rows.length > 0;
 }
 
-function renderPayrollRow(sale: Sale): HTMLLIElement {
+function renderPayrollRow({ sale, commission }: PayoutEntry): HTMLLIElement {
   const row = cloneTemplate<HTMLLIElement>('tpl-payroll-row');
-  setField(row, 'service', sale.serviceName);
+  setField(row, 'service', itemsSummary(sale));
   field(row, 'pending').hidden = sale.status !== 'pending';
   setField(row, 'date', formatShortDateTime(sale.date));
-  setField(row, 'plate', sale.plate || '—');
+  setField(row, 'plate', formatPlate(sale.plate) || '—');
   setField(row, 'vehicle-line', sale.vehicleLine);
-  setField(row, 'commission', formatCOP(sale.commission));
-  const rate = sale.total > 0 ? ` (${Math.round((sale.commission / sale.total) * 100)}%)` : '';
-  setField(row, 'sale-detail', `de ${formatCOP(sale.total)}${rate}`);
+  setField(row, 'commission', formatCOP(commission));
+  const shared = sale.sellers.length > 1 ? ` · compartida entre ${sale.sellers.length}` : '';
+  setField(row, 'sale-detail', `de ${formatCOP(sale.total)}${shared}`);
   return row;
 }
 
@@ -149,10 +151,10 @@ function renderPayroll(total: number, payouts: readonly SellerPayout[]): void {
     setField(
       card,
       'summary',
-      `${pluralize(payout.sales.length, 'servicio', 'servicios')} · vendió ${formatCOP(payout.soldTotal)}`,
+      `${pluralize(payout.entries.length, 'venta', 'ventas')} · por ${formatCOP(payout.soldTotal)}`,
     );
     setField(card, 'amount', formatCOP(payout.commission));
-    field(card, 'rows').replaceChildren(...payout.sales.map(renderPayrollRow));
+    field(card, 'rows').replaceChildren(...payout.entries.map(renderPayrollRow));
     return card;
   });
   byId('payroll-list').replaceChildren(...cards);

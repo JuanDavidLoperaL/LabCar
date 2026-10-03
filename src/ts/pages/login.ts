@@ -6,11 +6,11 @@ import {
   loginWithGoogle,
   loginWithPassword,
   resetPassword,
-  ROUTES,
   setRememberSession,
   type SessionUser,
 } from '../lib/auth';
 import { isFirebaseConfigured } from '../lib/firebase';
+import { homeFor } from '../lib/roles';
 import { byId } from '../ui/dom';
 import { setupPasswordToggle } from '../ui/password-toggle';
 import { showToast } from '../ui/toast';
@@ -35,8 +35,8 @@ function setLoading(loading: boolean): void {
 async function signIn(attempt: () => Promise<SessionUser>): Promise<void> {
   setLoading(true);
   try {
-    await attempt();
-    window.location.replace(ROUTES.home);
+    const session = await attempt();
+    window.location.replace(homeFor(session.profile.role));
   } catch (error) {
     showToast(authErrorMessage(error), 'error');
     setLoading(false);
@@ -82,7 +82,7 @@ if (isFirebaseConfigured) {
 
   currentSession()
     .then((session) => {
-      if (session) window.location.replace(ROUTES.home);
+      if (session) window.location.replace(homeFor(session.profile.role));
     })
     .catch((error: unknown) => showToast(authErrorMessage(error), 'error'));
 } else {

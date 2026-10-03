@@ -17,7 +17,7 @@ export default defineConfig({
       // Cada página nueva del sistema se agrega aquí.
       input: {
         login: resolve(src, 'html/login.html'),
-        inicio: resolve(src, 'html/inicio.html'),
+        panel: resolve(src, 'html/panel.html'),
       },
     },
   },

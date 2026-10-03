@@ -2,7 +2,6 @@ import {
   browserLocalPersistence,
   browserSessionPersistence,
   GoogleAuthProvider,
-  onAuthStateChanged,
   sendPasswordResetEmail,
   setPersistence,
   signInWithEmailAndPassword,
@@ -13,10 +12,11 @@ import {
 import { doc, getDoc } from 'firebase/firestore';
 import { FirebaseError } from 'firebase/app';
 import { getDb, getFirebaseAuth } from './firebase';
+import { isRole, type Role } from './roles';
 
 export const ROUTES = {
   login: '/html/login.html',
-  home: '/html/inicio.html',
+  home: '/html/panel.html',
 } as const;
 
 /**
@@ -28,8 +28,17 @@ export const USERNAME_DOMAIN = 'usuarios.labcar.local';
 /** Perfil del sistema guardado en Firestore: users/{correo}. Solo quien tenga perfil activo puede entrar. */
 export interface UserProfile {
   name: string;
-  role: 'admin' | 'employee';
+  role: Role;
   active: boolean;
+}
+
+/** Un rol desconocido o mal escrito se trata como el de menor privilegio. */
+function parseProfile(data: Record<string, unknown>): UserProfile {
+  return {
+    name: typeof data.name === 'string' ? data.name : '',
+    role: isRole(data.role) ? data.role : 'basic',
+    active: data.active === true,
+  };
 }
 
 export interface SessionUser {
@@ -53,38 +62,46 @@ export function toAuthEmail(identifier: string): string {
   return isUsername(value) ? `${value}@${USERNAME_DOMAIN}` : value;
 }
 
-async function applyPersistence(remember: boolean): Promise<void> {
-  await setPersistence(getFirebaseAuth(), remember ? browserLocalPersistence : browserSessionPersistence);
+/**
+ * "Recordar mi sesión": guarda la sesión en el navegador (local) o solo mientras la pestaña esté abierta.
+ * Se llama al cargar el login y al cambiar la casilla, no al hacer clic en Google: la ventana de Google
+ * debe abrirse de inmediato tras el clic o el navegador puede bloquearla.
+ */
+export function setRememberSession(remember: boolean): Promise<void> {
+  return setPersistence(getFirebaseAuth(), remember ? browserLocalPersistence : browserSessionPersistence);
+}
+
+function isInternalAccount(email: string): boolean {
+  return email.endsWith(`@${USERNAME_DOMAIN}`);
 }
 
 /** Verifica que el usuario autenticado tenga un perfil activo; si no, cierra la sesión. */
 async function authorize(user: User): Promise<SessionUser> {
   const email = user.email?.toLowerCase();
   let profile: UserProfile | undefined;
-  if (email) {
+  // Un correo sin verificar podría pertenecer a otra persona: no se le asigna el perfil.
+  if (email && (user.emailVerified || isInternalAccount(email))) {
     try {
       const snap = await getDoc(doc(getDb(), 'users', email));
-      profile = snap.exists() ? (snap.data() as UserProfile) : undefined;
+      profile = snap.exists() ? parseProfile(snap.data()) : undefined;
     } catch (error) {
       // Las reglas de Firestore niegan la lectura cuando el perfil no corresponde a este usuario.
       if (!(error instanceof FirebaseError && error.code === 'permission-denied')) throw error;
     }
   }
-  if (!profile || profile.active !== true) {
+  if (!profile?.active) {
     await signOut(getFirebaseAuth());
     throw new NotAuthorizedError(email);
   }
   return { user, profile };
 }
 
-export async function loginWithPassword(identifier: string, password: string, remember: boolean): Promise<SessionUser> {
-  await applyPersistence(remember);
+export async function loginWithPassword(identifier: string, password: string): Promise<SessionUser> {
   const { user } = await signInWithEmailAndPassword(getFirebaseAuth(), toAuthEmail(identifier), password);
   return authorize(user);
 }
 
-export async function loginWithGoogle(remember: boolean): Promise<SessionUser> {
-  await applyPersistence(remember);
+export async function loginWithGoogle(): Promise<SessionUser> {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
   const { user } = await signInWithPopup(getFirebaseAuth(), provider);
@@ -99,16 +116,17 @@ export function resetPassword(email: string): Promise<void> {
   return sendPasswordResetEmail(getFirebaseAuth(), email.trim());
 }
 
-/** Resuelve con la sesión actual autorizada (o null) cuando Firebase termina de restaurarla. */
-export function currentSession(): Promise<SessionUser | null> {
+/** Sesión actual autorizada (o null), cuando Firebase termina de restaurarla. */
+export async function currentSession(): Promise<SessionUser | null> {
   const auth = getFirebaseAuth();
-  return new Promise((resolve, reject) => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      unsubscribe();
-      if (!user) return resolve(null);
-      authorize(user).then(resolve, (error) => (error instanceof NotAuthorizedError ? resolve(null) : reject(error)));
-    });
-  });
+  await auth.authStateReady();
+  if (!auth.currentUser) return null;
+  try {
+    return await authorize(auth.currentUser);
+  } catch (error) {
+    if (error instanceof NotAuthorizedError) return null;
+    throw error;
+  }
 }
 
 /** Protege una página: si no hay sesión autorizada, redirige al login. */
@@ -116,7 +134,8 @@ export async function requireSession(): Promise<SessionUser> {
   const session = await currentSession();
   if (!session) {
     window.location.replace(ROUTES.login);
-    throw new Error('Sin sesión');
+    // La página se está yendo al login: no se resuelve para que no siga ejecutándose.
+    return new Promise<never>(() => {});
   }
   return session;
 }

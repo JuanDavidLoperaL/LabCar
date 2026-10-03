@@ -2,11 +2,59 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Perfiles del sistema. El ID del documento es el correo en minúsculas
-    // (para usuarios sin correo: usuario@usuarios.labcar.local).
-    // Por ahora se crean desde la consola de Firebase.
+
+    // ---- Funciones de apoyo ----
+
+    // Correo de la sesión en minúsculas (los IDs de users/ están en minúsculas).
+    function sessionEmail() {
+      return request.auth.token.email.lower();
+    }
+
+    // Usuarios sin correo propio, creados por el administrador.
+    function isInternalAccount() {
+      return sessionEmail().matches('.*@usuarios[.]labcar[.]local$');
+    }
+
+    // Exige correo verificado (Google siempre lo está) para que nadie pueda
+    // registrarse con el correo de otra persona y heredar su perfil.
+    function signedIn() {
+      return request.auth != null
+        && request.auth.token.email != null
+        && (request.auth.token.email_verified == true || isInternalAccount());
+    }
+
+    // Perfil activo con uno de los roles indicados (admin | manager | basic).
+    function hasRole(roles) {
+      let profile = get(/databases/$(database)/documents/users/$(sessionEmail())).data;
+      return signedIn() && profile.active == true && profile.role in roles;
+    }
+
+    // Medianoche de hoy en Colombia (UTC-5), con 15 min de tolerancia por
+    // diferencias de reloj del dispositivo. El manager no puede leer días anteriores.
+    function isToday(date) {
+      let bogotaMidnight = (request.time - duration.value(5, 'h')).date() + duration.value(5, 'h');
+      return date >= bogotaMidnight - duration.value(15, 'm');
+    }
+
+    // ---- Perfiles ----
+    // El ID del documento es el correo en minúsculas
+    // (usuarios sin correo: usuario@usuarios.labcar.local).
     match /users/{email} {
-      allow read: if request.auth != null && request.auth.token.email == email;
+      allow read: if signedIn() && sessionEmail() == email;
+      allow write: if false;
+    }
+
+    // ---- Ventas y gastos ----
+    // Escritura bloqueada hasta construir los módulos de Ventas y Gastos.
+    match /sales/{saleId} {
+      allow read: if hasRole(['admin'])
+        || (hasRole(['manager']) && isToday(resource.data.date));
+      allow write: if false;
+    }
+
+    match /expenses/{expenseId} {
+      allow read: if hasRole(['admin'])
+        || (hasRole(['manager']) && isToday(resource.data.date));
       allow write: if false;
     }
   }

@@ -1,0 +1,78 @@
+<!-- Estructura común de las páginas internas: menú lateral, encabezado, menú móvil y notificaciones.
+     La monta src/ts/ui/shell.ts; el contenido de cada página se inserta en [data-slot="content"]. -->
+<div id="drawer-backdrop" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden" hidden></div>
+
+<aside id="sidebar"
+  class="fixed left-0 top-0 z-50 h-full w-64 -translate-x-full lg:translate-x-0 data-[open=true]:translate-x-0 transition-transform duration-300 bg-surface-container-lowest flex flex-col shadow-[0_1px_8px_rgba(0,0,0,0.5)]">
+  <div class="flex flex-col flex-1 overflow-y-auto px-space-md py-space-lg">
+    <div class="flex items-center gap-space-sm px-space-xs mb-space-lg">
+      <img data-logo alt="" class="h-9 w-auto object-contain" />
+      <div class="flex flex-col">
+        <span class="font-label-lg text-label-lg text-on-surface tracking-wider uppercase font-bold">LAB CAR</span>
+        <span class="font-label-sm text-label-sm text-outline">Estética Automotriz</span>
+      </div>
+    </div>
+    <nav id="nav-desktop" aria-label="Menú principal" class="flex flex-col gap-space-xs flex-1"></nav>
+  </div>
+</aside>
+
+<div class="lg:pl-64">
+  <header class="fixed top-0 left-0 lg:left-64 right-0 h-16 bg-surface-container-lowest/90 backdrop-blur-xl z-30 flex items-center justify-between px-space-md lg:px-space-xl shadow-[0_1px_8px_rgba(0,0,0,0.3)]">
+    <div class="flex items-center gap-space-md">
+      <img data-logo alt="LAB CAR" class="h-8 w-auto lg:hidden" />
+      <div class="hidden md:flex items-center gap-space-xs text-on-surface-variant font-label-sm text-label-sm bg-surface-container-low/50 px-space-sm py-1.5 rounded-lg">
+        <span class="material-symbols-outlined text-[16px] text-outline" aria-hidden="true">calendar_today</span>
+        <span id="header-date"></span>
+      </div>
+    </div>
+    <div class="flex items-center gap-space-md">
+      <div class="flex items-center gap-space-sm">
+        <img id="header-avatar" alt="" referrerpolicy="no-referrer" class="w-8 h-8 rounded-full object-cover ring-1 ring-primary/40" hidden />
+        <span id="header-initials" class="w-8 h-8 rounded-full bg-primary-container text-on-primary-container font-label-md text-label-md font-bold flex items-center justify-center ring-1 ring-primary/40"></span>
+        <div class="hidden sm:flex flex-col text-left">
+          <span id="header-name" class="font-label-md text-label-md text-on-surface font-semibold"></span>
+          <span id="header-role" class="font-label-sm text-label-sm text-primary"></span>
+        </div>
+      </div>
+      <button id="btn-logout" type="button" title="Cerrar sesión" aria-label="Cerrar sesión"
+        class="p-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors flex items-center">
+        <span class="material-symbols-outlined text-[20px]" aria-hidden="true">logout</span>
+      </button>
+    </div>
+  </header>
+
+  <div data-slot="content" class="pt-16 pb-24 lg:pb-12 min-h-screen"></div>
+</div>
+
+<nav id="nav-mobile" aria-label="Menú rápido"
+  class="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-surface-container-lowest/95 backdrop-blur-xl z-30 flex items-center justify-around px-space-sm shadow-[0_-2px_10px_rgba(0,0,0,0.5)]">
+  <button id="btn-menu" type="button" aria-controls="sidebar" aria-expanded="false"
+    class="order-last flex flex-col items-center gap-0.5 text-on-surface-variant hover:text-on-surface">
+    <span class="material-symbols-outlined text-[20px]" aria-hidden="true">menu</span>
+    <span class="font-label-sm text-label-sm">Menú</span>
+  </button>
+</nav>
+
+<div id="status-toast" role="status" aria-live="polite"
+  class="fixed bottom-20 lg:bottom-6 left-1/2 -translate-x-1/2 z-50 translate-y-20 opacity-0 transition-all duration-300 pointer-events-none px-4 py-3 rounded-xl bg-surface-container-highest shadow-2xl flex items-center gap-3 max-w-sm">
+  <span id="toast-icon" class="material-symbols-outlined text-primary" aria-hidden="true">info</span>
+  <span id="toast-message" class="font-body-sm text-body-sm text-on-surface"></span>
+</div>
+
+<template id="tpl-nav-item">
+  <a class="flex items-center justify-between px-space-md py-space-sm rounded-xl transition-all text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface aria-[current=page]:bg-primary-container aria-[current=page]:text-on-primary-container aria-[current=page]:font-bold aria-disabled:opacity-50 aria-disabled:pointer-events-none">
+    <span class="flex items-center gap-space-sm">
+      <span data-field="icon" class="material-symbols-outlined" aria-hidden="true"></span>
+      <span data-field="label" class="font-body-md text-body-md"></span>
+    </span>
+    <span data-field="badge" hidden
+      class="font-label-sm text-label-sm px-space-xs py-0.5 rounded-full data-[variant=info]:bg-surface-container-high data-[variant=info]:text-secondary data-[variant=muted]:bg-surface-container data-[variant=muted]:text-outline"></span>
+  </a>
+</template>
+
+<template id="tpl-nav-item-mobile">
+  <a class="flex flex-col items-center gap-0.5 text-on-surface-variant hover:text-on-surface aria-[current=page]:text-primary aria-disabled:opacity-40 aria-disabled:pointer-events-none">
+    <span data-field="icon" class="material-symbols-outlined text-[20px]" aria-hidden="true"></span>
+    <span data-field="label" class="font-label-sm text-label-sm"></span>
+  </a>
+</template>

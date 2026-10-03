@@ -3,3 +3,6 @@ dist/
 .DS_Store
 .firebase/
 *.log
+
+# Clave de cuenta de servicio de Firebase (acceso total al proyecto): nunca al repositorio
+service-account*.json

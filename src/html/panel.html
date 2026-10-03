@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="es" class="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Panel Principal · LAB CAR</title>
+    <link rel="icon" type="image/png" href="../assets/images/favicon.png" />
+    <script type="module" src="../ts/pages/panel.ts"></script>
+  </head>
+  <!-- "invisible" evita mostrar la página antes de validar la sesión -->
+  <body class="invisible bg-surface font-body-md text-body-md text-on-surface antialiased min-h-screen">
+    <main class="relative bg-surface w-full px-gutter-mobile lg:px-gutter pt-space-lg">
+      <!-- Rol básico: sin acceso al panel -->
+      <section id="no-access" hidden class="flex flex-col items-center justify-center text-center gap-space-sm py-24">
+        <span class="material-symbols-outlined text-[48px] text-outline" aria-hidden="true">lock</span>
+        <h1 class="font-headline-md text-headline-md">El panel principal no está disponible para tu rol</h1>
+        <p class="text-on-surface-variant max-w-md">Usa el menú para ir a los módulos habilitados para ti. Si necesitas más acceso, habla con el administrador.</p>
+      </section>
+
+      <!-- Error al cargar la sesión o los datos -->
+      <section id="load-error" hidden class="flex flex-col items-center justify-center text-center gap-space-sm py-24">
+        <span class="material-symbols-outlined text-[48px] text-tertiary" aria-hidden="true">cloud_off</span>
+        <h1 class="font-headline-md text-headline-md">No se pudo cargar el panel</h1>
+        <p class="text-on-surface-variant max-w-md">Revisa tu conexión a internet e intenta de nuevo.</p>
+        <button id="btn-retry" type="button" class="mt-space-sm px-space-lg py-2.5 rounded-xl bg-primary-container text-on-primary-container font-label-lg text-label-lg">Reintentar</button>
+      </section>
+
+      <div id="dashboard" hidden data-loading="true" class="flex flex-col w-full gap-space-lg pb-space-xl">
+        <!-- Rol activo -->
+        <div class="flex items-center gap-space-sm px-space-md py-space-sm bg-surface-container-high rounded-xl shadow-sm">
+          <span class="flex items-center justify-center w-8 h-8 rounded-lg bg-primary-container text-on-primary-container">
+            <span class="material-symbols-outlined text-[18px]" aria-hidden="true">verified_user</span>
+          </span>
+          <span class="font-label-lg text-label-lg font-semibold text-primary">Rol activo: <span id="role-label"></span></span>
+        </div>
+
+        <!-- Encabezado y filtro de periodo -->
+        <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-space-md">
+          <div class="flex flex-col gap-1">
+            <h1 class="font-headline-lg text-headline-lg">Panel Principal</h1>
+            <p id="dashboard-subtitle" class="font-body-md text-body-md text-on-surface-variant"></p>
+          </div>
+          <div class="flex flex-wrap items-center gap-space-sm self-start">
+            <div id="period-filter" role="group" aria-label="Periodo" data-admin-only class="flex p-1 bg-surface-container-lowest rounded-xl">
+              <button type="button" aria-pressed="false" data-period="day"
+                class="px-space-sm py-1.5 rounded-lg font-label-md text-label-md text-on-surface-variant hover:text-on-surface aria-pressed:bg-primary-container aria-pressed:text-on-primary-container aria-pressed:font-semibold transition-all">Día</button>
+              <button type="button" aria-pressed="false" data-period="week"
+                class="px-space-sm py-1.5 rounded-lg font-label-md text-label-md text-on-surface-variant hover:text-on-surface aria-pressed:bg-primary-container aria-pressed:text-on-primary-container aria-pressed:font-semibold transition-all">Semana</button>
+              <button type="button" aria-pressed="false" data-period="month"
+                class="px-space-sm py-1.5 rounded-lg font-label-md text-label-md text-on-surface-variant hover:text-on-surface aria-pressed:bg-primary-container aria-pressed:text-on-primary-container aria-pressed:font-semibold transition-all">Mes</button>
+            </div>
+            <div class="flex items-center bg-surface-container-low rounded-lg">
+              <button id="btn-period-prev" type="button" data-admin-only aria-label="Periodo anterior" title="Periodo anterior"
+                class="p-1.5 rounded-l-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors flex items-center">
+                <span class="material-symbols-outlined text-[20px]" aria-hidden="true">chevron_left</span>
+              </button>
+              <span class="flex items-center gap-space-xs font-label-md text-label-md text-on-surface px-space-sm py-1.5" title="Días incluidos en las cifras">
+                <span class="material-symbols-outlined text-[16px] text-outline" aria-hidden="true">date_range</span>
+                <span id="period-range" aria-live="polite"></span>
+              </span>
+              <button id="btn-period-next" type="button" data-admin-only aria-label="Periodo siguiente" title="Periodo siguiente" disabled
+                class="p-1.5 rounded-r-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high disabled:opacity-30 disabled:pointer-events-none transition-colors flex items-center">
+                <span class="material-symbols-outlined text-[20px]" aria-hidden="true">chevron_right</span>
+              </button>
+            </div>
+            <button id="btn-period-current" type="button" data-admin-only hidden
+              class="flex items-center gap-1 font-label-md text-label-md text-primary hover:underline">
+              <span class="material-symbols-outlined text-[16px]" aria-hidden="true">today</span>Actual
+            </button>
+            <span id="loading-indicator" role="status" hidden class="flex items-center gap-1 font-label-md text-label-md text-on-surface-variant">
+              <span class="material-symbols-outlined text-[18px] animate-spin motion-reduce:animate-none" aria-hidden="true">progress_activity</span>
+              Actualizando…
+            </span>
+          </div>
+        </div>
+
+        <!-- Indicadores -->
+        <div id="kpi-grid" class="grid grid-cols-1 md:grid-cols-2 gap-space-md data-[layout=full]:xl:grid-cols-5">
+          <!-- Ventas -->
+          <article class="flex flex-col justify-between p-space-md bg-surface-container rounded-xl shadow-md">
+            <div class="flex items-center justify-between mb-space-sm">
+              <h2 id="kpi-sales-title" class="font-label-md text-label-md text-outline">Ventas</h2>
+              <span class="p-1.5 rounded-lg bg-surface-container-lowest text-secondary">
+                <span class="material-symbols-outlined text-[20px]" aria-hidden="true">payments</span>
+              </span>
+            </div>
+            <div>
+              <p class="font-currency-display text-currency-display tracking-tight"><span id="kpi-sales-value" data-skeleton>—</span> <span class="font-label-sm text-label-sm text-outline">COP</span></p>
+              <p class="mt-space-xs"><span id="kpi-sales-detail" data-skeleton class="font-body-sm text-body-sm text-on-surface-variant"></span></p>
+            </div>
+          </article>
+
+          <!-- Ganancia neta -->
+          <article data-admin-only class="flex flex-col justify-between p-space-md bg-surface-container rounded-xl shadow-md">
+            <div class="flex items-center justify-between mb-space-sm">
+              <h2 class="font-label-md text-label-md text-outline">Ganancia Neta</h2>
+              <span class="p-1.5 rounded-lg bg-surface-container-lowest text-primary">
+                <span class="material-symbols-outlined text-[20px]" aria-hidden="true">savings</span>
+              </span>
+            </div>
+            <div>
+              <p class="font-currency-display text-currency-display tracking-tight"><span id="kpi-net-value" data-skeleton class="data-[negative=true]:text-tertiary">—</span> <span class="font-label-sm text-label-sm text-outline">COP</span></p>
+              <p id="kpi-net-detail" data-skeleton class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs">Cobrado − gastos − comisiones</p>
+            </div>
+          </article>
+
+          <!-- Cartera -->
+          <article data-admin-only class="flex flex-col justify-between p-space-md bg-surface-container rounded-xl shadow-md">
+            <div class="flex items-center justify-between mb-space-sm">
+              <h2 class="font-label-md text-label-md text-outline">Por Cobrar (Cartera)</h2>
+              <span class="p-1.5 rounded-lg bg-tertiary-container/30 text-tertiary">
+                <span class="material-symbols-outlined text-[20px]" aria-hidden="true">pending_actions</span>
+              </span>
+            </div>
+            <div>
+              <p class="font-currency-display text-currency-display tracking-tight text-tertiary"><span id="kpi-receivables-value" data-skeleton>—</span> <span class="font-label-sm text-label-sm text-outline">COP</span></p>
+              <div class="flex flex-wrap items-center gap-1.5 mt-space-xs">
+                <span id="kpi-receivables-overdue" data-skeleton hidden class="font-label-sm text-label-sm text-tertiary bg-tertiary-container/20 px-1.5 py-0.5 rounded"></span>
+                <span id="kpi-receivables-detail" data-skeleton class="font-body-sm text-body-sm text-on-surface-variant"></span>
+              </div>
+            </div>
+          </article>
+
+          <!-- Gastos -->
+          <article class="flex flex-col justify-between p-space-md bg-surface-container rounded-xl shadow-md">
+            <div class="flex items-center justify-between mb-space-sm">
+              <h2 id="kpi-expenses-title" class="font-label-md text-label-md text-outline">Gastos</h2>
+              <span class="p-1.5 rounded-lg bg-surface-container-lowest text-outline">
+                <span class="material-symbols-outlined text-[20px]" aria-hidden="true">shopping_bag</span>
+              </span>
+            </div>
+            <div>
+              <p class="font-currency-display text-currency-display tracking-tight"><span id="kpi-expenses-value" data-skeleton>—</span> <span class="font-label-sm text-label-sm text-outline">COP</span></p>
+              <p id="kpi-expenses-detail" data-skeleton class="font-body-sm text-body-sm text-on-surface-variant mt-space-xs truncate"></p>
+            </div>
+          </article>
+
+          <!-- Comisiones -->
+          <article data-admin-only class="flex flex-col justify-between p-space-md bg-linear-to-br from-surface-container via-surface-container to-surface-container-high rounded-xl shadow-lg shadow-black/40">
+            <div class="flex items-center justify-between mb-space-sm">
+              <h2 class="font-label-md text-label-md text-secondary">Comisiones</h2>
+              <span class="px-1.5 py-0.5 rounded-full bg-secondary-container/40 text-secondary-fixed font-label-sm text-label-sm font-semibold">Pago sábado</span>
+            </div>
+            <div>
+              <p class="font-currency-display text-currency-display tracking-tight text-primary"><span id="kpi-commissions-value" data-skeleton>—</span> <span class="font-label-sm text-label-sm text-outline">COP</span></p>
+              <p id="kpi-commissions-detail" data-skeleton class="font-label-sm text-label-sm text-on-surface-variant mt-space-xs"></p>
+            </div>
+          </article>
+        </div>
+
+        <!-- Últimas ventas -->
+        <section data-admin-only data-dim-while-loading class="w-full flex flex-col bg-surface-container rounded-xl p-space-md shadow-md gap-space-md">
+          <div class="flex items-center gap-space-xs">
+            <span class="material-symbols-outlined text-secondary text-[20px]" aria-hidden="true">receipt_long</span>
+            <h2 class="font-headline-md text-headline-md">Últimas Ventas</h2>
+          </div>
+          <div class="overflow-x-auto w-full">
+            <table class="w-full text-left whitespace-nowrap">
+              <thead>
+                <tr class="bg-surface-container-low text-outline font-label-sm text-label-sm uppercase tracking-wider">
+                  <th scope="col" class="px-space-md py-3 rounded-l-lg">Fecha</th>
+                  <th scope="col" class="px-space-md py-3">Placa / Línea</th>
+                  <th scope="col" class="px-space-md py-3">Cliente</th>
+                  <th scope="col" class="px-space-md py-3">Servicio</th>
+                  <th scope="col" class="px-space-md py-3">Vendedor</th>
+                  <th scope="col" class="px-space-md py-3">Método</th>
+                  <th scope="col" class="px-space-md py-3 text-right">Total COP</th>
+                  <th scope="col" class="px-space-md py-3 rounded-r-lg text-center">Estado</th>
+                </tr>
+              </thead>
+              <tbody id="sales-rows" class="text-on-surface font-body-sm text-body-sm"></tbody>
+            </table>
+            <p id="sales-empty" hidden class="py-space-lg text-center text-on-surface-variant">No hay ventas registradas en este periodo.</p>
+          </div>
+        </section>
+
+        <!-- Comisiones por vendedor -->
+        <section data-admin-only data-dim-while-loading class="w-full flex flex-col bg-surface-container rounded-xl p-space-md shadow-md gap-space-md">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm">
+            <div class="flex flex-col gap-1">
+              <div class="flex items-center gap-space-xs">
+                <span class="material-symbols-outlined text-primary text-[20px]" aria-hidden="true">badge</span>
+                <h2 class="font-headline-md text-headline-md">Comisiones a Liquidar</h2>
+                <span class="bg-surface-container-high text-secondary font-label-sm text-label-sm px-2 py-0.5 rounded">Corte sábado</span>
+              </div>
+              <p class="font-body-sm text-body-sm text-on-surface-variant">Lo que se le debe pagar a cada empleado por los servicios del periodo. Incluye servicios aún por cobrar al cliente.</p>
+            </div>
+            <div class="text-right self-end sm:self-auto">
+              <span class="font-label-sm text-label-sm text-outline block">Total nómina</span>
+              <span class="font-headline-md text-headline-md font-bold text-secondary"><span id="payroll-total" data-skeleton>—</span> COP</span>
+            </div>
+          </div>
+          <div id="payroll-list" class="grid grid-cols-1 xl:grid-cols-2 gap-space-md items-start"></div>
+          <p id="payroll-empty" hidden class="py-space-md text-center text-on-surface-variant">No hay comisiones en este periodo.</p>
+        </section>
+      </div>
+    </main>
+
+    <template id="tpl-sale-row">
+      <tr class="hover:bg-surface-container-high transition-colors data-[status=pending]:bg-tertiary-container/5">
+        <td data-field="date" class="px-space-md py-3 text-on-surface-variant"></td>
+        <td class="px-space-md py-3">
+          <div class="flex items-center gap-1.5">
+            <span data-field="plate" class="font-mono bg-surface-container-lowest text-secondary px-1.5 py-0.5 rounded font-bold text-xs"></span>
+            <span data-field="vehicle-line" class="text-outline"></span>
+          </div>
+        </td>
+        <td data-field="customer" class="px-space-md py-3 font-medium"></td>
+        <td data-field="service" class="px-space-md py-3 text-on-surface-variant"></td>
+        <td class="px-space-md py-3 font-medium">
+          <div class="flex items-center gap-1.5">
+            <span data-field="seller-initials" class="w-5 h-5 rounded-full bg-surface-container-highest flex items-center justify-center text-[10px] font-bold text-secondary"></span>
+            <span data-field="seller"></span>
+          </div>
+        </td>
+        <td class="px-space-md py-3">
+          <span data-field="method" class="inline-flex items-center gap-1 font-label-sm text-label-sm bg-surface-container-lowest px-1.5 py-0.5 rounded"></span>
+        </td>
+        <td data-field="total" class="px-space-md py-3 text-right font-bold"></td>
+        <td class="px-space-md py-3 text-center">
+          <span data-field="status"
+            class="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-surface-container-high text-secondary data-[status=pending]:bg-tertiary-container/30 data-[status=pending]:text-tertiary data-[status=pending]:font-bold"></span>
+        </td>
+      </tr>
+    </template>
+
+    <template id="tpl-payroll-card">
+      <article class="flex flex-col bg-surface-container-low rounded-xl">
+        <div class="flex items-center justify-between gap-space-md p-space-md">
+          <div class="flex items-center gap-space-sm min-w-0">
+            <span data-field="initials" class="shrink-0 w-10 h-10 rounded-full bg-primary-container text-on-primary-container font-label-lg text-label-lg flex items-center justify-center font-bold"></span>
+            <div class="flex flex-col min-w-0">
+              <span data-field="name" class="font-label-lg text-label-lg truncate"></span>
+              <span data-field="summary" class="font-body-sm text-body-sm text-outline"></span>
+            </div>
+          </div>
+          <div class="flex flex-col text-right shrink-0">
+            <span class="font-label-sm text-label-sm text-outline">A pagar</span>
+            <span data-field="amount" class="font-headline-md text-headline-md font-bold text-secondary"></span>
+          </div>
+        </div>
+        <details class="group border-t border-outline-variant/40">
+          <summary class="flex items-center justify-between cursor-pointer list-none px-space-md py-space-sm font-label-md text-label-md text-primary hover:bg-surface-container-high rounded-b-xl group-open:rounded-none [&::-webkit-details-marker]:hidden">
+            Ver detalle de servicios
+            <span class="material-symbols-outlined text-[18px] transition-transform group-open:rotate-180" aria-hidden="true">expand_more</span>
+          </summary>
+          <ul data-field="rows" class="flex flex-col px-space-md pb-space-sm"></ul>
+        </details>
+      </article>
+    </template>
+
+    <template id="tpl-payroll-row">
+      <li class="flex items-center justify-between gap-space-md py-2 border-t border-outline-variant/20 font-body-sm text-body-sm">
+        <div class="flex flex-col min-w-0">
+          <span class="flex flex-wrap items-center gap-x-1.5">
+            <span data-field="service" class="font-medium"></span>
+            <span data-field="pending" hidden class="font-label-sm text-label-sm text-tertiary bg-tertiary-container/20 px-1.5 py-0.5 rounded">Por cobrar</span>
+          </span>
+          <span class="text-outline truncate">
+            <span data-field="date"></span> ·
+            <span data-field="plate" class="font-mono text-secondary font-bold text-xs"></span>
+            <span data-field="vehicle-line"></span>
+          </span>
+        </div>
+        <div class="flex flex-col text-right shrink-0">
+          <span data-field="commission" class="font-semibold"></span>
+          <span data-field="sale-detail" class="text-outline"></span>
+        </div>
+      </li>
+    </template>
+  </body>
+</html>

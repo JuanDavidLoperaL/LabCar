@@ -7,6 +7,7 @@ import {
   loginWithPassword,
   resetPassword,
   ROUTES,
+  setRememberSession,
   type SessionUser,
 } from '../lib/auth';
 import { isFirebaseConfigured } from '../lib/firebase';
@@ -34,8 +35,7 @@ function setLoading(loading: boolean): void {
 async function signIn(attempt: () => Promise<SessionUser>): Promise<void> {
   setLoading(true);
   try {
-    const { profile } = await attempt();
-    showToast(`¡Bienvenido, ${profile.name}!`, 'verified');
+    await attempt();
     window.location.replace(ROUTES.home);
   } catch (error) {
     showToast(authErrorMessage(error), 'error');
@@ -49,11 +49,11 @@ form.addEventListener('submit', (event) => {
     showToast('Escribe tu usuario y contraseña.', 'warning');
     return;
   }
-  signIn(() => loginWithPassword(userInput.value, passwordInput.value, rememberInput.checked));
+  signIn(() => loginWithPassword(userInput.value, passwordInput.value));
 });
 
 googleBtn.addEventListener('click', () => {
-  signIn(() => loginWithGoogle(rememberInput.checked));
+  signIn(() => loginWithGoogle());
 });
 
 forgotBtn.addEventListener('click', async () => {
@@ -77,9 +77,14 @@ forgotBtn.addEventListener('click', async () => {
 
 // Si ya hay sesión guardada y autorizada, entra directo.
 if (isFirebaseConfigured) {
-  currentSession().then((session) => {
-    if (session) window.location.replace(ROUTES.home);
-  });
+  void setRememberSession(rememberInput.checked);
+  rememberInput.addEventListener('change', () => void setRememberSession(rememberInput.checked));
+
+  currentSession()
+    .then((session) => {
+      if (session) window.location.replace(ROUTES.home);
+    })
+    .catch((error: unknown) => showToast(authErrorMessage(error), 'error'));
 } else {
   showToast('Falta configurar Firebase en el archivo .env', 'warning');
 }

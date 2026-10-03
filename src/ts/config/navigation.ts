@@ -15,7 +15,8 @@ export interface NavItem {
 
 export const NAV_ITEMS: readonly NavItem[] = [
   { id: 'panel', label: 'Panel Principal', icon: 'speed', href: '/html/panel.html', roles: ['admin', 'manager'] },
-  { id: 'ventas', label: 'Ventas', icon: 'point_of_sale', href: null, roles: ['admin', 'manager', 'basic'] },
+  { id: 'ventas', label: 'Nueva Venta', icon: 'point_of_sale', href: '/html/ventas.html', roles: ['admin', 'manager', 'basic'] },
+  { id: 'historial', label: 'Historial', icon: 'history', href: '/html/historial.html', roles: ['admin', 'manager', 'basic'] },
   { id: 'cartera', label: 'Cartera', icon: 'account_balance_wallet', href: null, roles: ['admin', 'manager'] },
   { id: 'gastos', label: 'Gastos', icon: 'payments', href: null, roles: ['admin', 'manager'] },
   {

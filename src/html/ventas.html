@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="es" class="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nueva Venta · LAB CAR</title>
+    <link rel="icon" type="image/png" href="../assets/images/favicon.png" />
+    <script type="module" src="../ts/pages/ventas.ts"></script>
+  </head>
+  <!-- "invisible" evita mostrar la página antes de validar la sesión -->
+  <body class="invisible bg-surface font-body-md text-body-md text-on-surface antialiased min-h-screen">
+    <main class="relative bg-surface w-full px-gutter-mobile lg:px-gutter pt-space-lg pb-space-xl">
+      <!-- Error al cargar -->
+      <section id="load-error" hidden class="flex flex-col items-center justify-center text-center gap-space-sm py-24">
+        <span class="material-symbols-outlined text-[48px] text-tertiary" aria-hidden="true">cloud_off</span>
+        <h1 class="font-headline-md text-headline-md">No se pudo cargar la página de ventas</h1>
+        <p class="text-on-surface-variant max-w-md">Revisa tu conexión a internet e intenta de nuevo.</p>
+        <button id="btn-retry" type="button" class="mt-space-sm px-space-lg py-2.5 rounded-xl bg-primary-container text-on-primary-container font-label-lg text-label-lg">Reintentar</button>
+      </section>
+
+      <form id="sale-form" hidden novalidate>
+        <!-- Encabezado -->
+        <div class="bg-surface-container-low rounded-xl p-space-md mb-space-lg shadow-md flex items-center gap-space-sm">
+          <span class="w-10 h-10 rounded-xl bg-primary-container/20 flex items-center justify-center text-primary">
+            <span class="material-symbols-outlined text-[24px]" aria-hidden="true">receipt_long</span>
+          </span>
+          <div>
+            <h1 class="font-headline-lg text-headline-lg">Nueva Venta / Orden de Servicio</h1>
+            <p class="font-label-sm text-label-sm text-on-surface-variant">El número de orden se asigna al registrar la venta</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 xl:grid-cols-12 gap-space-lg items-start">
+          <!-- Columna izquierda: pasos -->
+          <fieldset id="sale-fields" class="xl:col-span-7 flex flex-col gap-space-lg min-w-0 disabled:opacity-70">
+            <!-- Paso 1: vendedores -->
+            <section aria-labelledby="step-sellers" class="bg-surface-container-low rounded-xl p-space-md sm:p-space-lg shadow-sm">
+              <div class="flex items-center justify-between gap-space-sm mb-space-md">
+                <div class="flex items-center gap-space-xs">
+                  <span class="w-6 h-6 shrink-0 rounded-full bg-primary-container text-on-primary-container font-label-sm text-label-sm flex items-center justify-center font-bold">1</span>
+                  <h2 id="step-sellers" class="font-label-lg text-label-lg uppercase tracking-wider">¿Quién vende? / Vendedores</h2>
+                </div>
+                <span class="font-label-sm text-label-sm text-primary">Obligatorio</span>
+              </div>
+              <p class="font-body-sm text-body-sm text-on-surface-variant mb-space-sm">Busca y agrega uno o más (máximo 4). La comisión se reparte por igual entre los vendedores.</p>
+              <div class="relative">
+                <label for="seller-search" class="sr-only">Buscar vendedor</label>
+                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-primary text-[20px] pointer-events-none" aria-hidden="true">person_search</span>
+                <input id="seller-search" type="search" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="seller-results" aria-autocomplete="list"
+                  placeholder="Buscar vendedor por nombre…"
+                  class="w-full h-11 bg-surface-container-lowest pl-10 pr-space-md rounded-xl focus:outline-none focus:ring-2 focus:ring-primary placeholder:text-outline/50 shadow-inner" />
+                <ul id="seller-results" role="listbox" hidden
+                  class="absolute z-20 left-0 right-0 mt-1 max-h-72 overflow-y-auto bg-surface-container-high rounded-xl shadow-2xl p-1"></ul>
+              </div>
+              <ul id="sellers-selected" aria-label="Vendedores seleccionados" class="flex flex-wrap gap-space-xs mt-space-sm"></ul>
+              <p id="commission-hint" class="mt-space-sm font-label-md text-label-md text-secondary"></p>
+              <p data-error-for="sellers" hidden class="mt-1 font-body-sm text-body-sm text-error"></p>
+            </section>
+
+            <!-- Paso 2: vehículo -->
+            <section aria-labelledby="step-vehicle" class="bg-surface-container-low rounded-xl p-space-md sm:p-space-lg shadow-sm">
+              <div class="flex items-center gap-space-xs mb-space-md">
+                <span class="w-6 h-6 shrink-0 rounded-full bg-primary-container text-on-primary-container font-label-sm text-label-sm flex items-center justify-center font-bold">2</span>
+                <h2 id="step-vehicle" class="font-label-lg text-label-lg uppercase tracking-wider">Vehículo &amp; Placa</h2>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-12 gap-space-md">
+                <div id="vehicle-type" role="group" aria-label="Tipo de vehículo" class="sm:col-span-5 flex rounded-xl bg-surface-container p-1 gap-1 self-start">
+                  <button type="button" data-vehicle-type="car" aria-pressed="true"
+                    class="flex-1 flex items-center justify-center gap-space-xs py-2.5 px-space-sm rounded-lg font-label-lg text-label-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high aria-pressed:bg-primary-container aria-pressed:text-on-primary-container aria-pressed:shadow-sm transition-all">
+                    <span class="material-symbols-outlined text-[20px]" aria-hidden="true">directions_car</span>Carro
+                  </button>
+                  <button type="button" data-vehicle-type="motorcycle" aria-pressed="false"
+                    class="flex-1 flex items-center justify-center gap-space-xs py-2.5 px-space-sm rounded-lg font-label-lg text-label-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high aria-pressed:bg-primary-container aria-pressed:text-on-primary-container aria-pressed:shadow-sm transition-all">
+                    <span class="material-symbols-outlined text-[20px]" aria-hidden="true">two_wheeler</span>Moto
+                  </button>
+                </div>
+                <div class="sm:col-span-7">
+                  <label for="plate" class="sr-only">Placa</label>
+                  <div class="relative flex items-center">
+                    <span class="absolute left-3 flex items-center gap-1.5 pointer-events-none" aria-hidden="true">
+                      <span class="w-2.5 h-6 bg-yellow-400 rounded-sm"></span>
+                      <span class="text-outline font-label-sm text-label-sm">COL</span>
+                    </span>
+                    <input id="plate" name="plate" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="12" placeholder="ABC-123" aria-describedby="plate-help"
+                      class="w-full h-12 bg-surface-container-lowest font-mono font-bold text-headline-md tracking-widest pl-16 pr-10 uppercase rounded-xl focus:outline-none focus:ring-2 focus:ring-primary aria-[invalid=true]:ring-2 aria-[invalid=true]:ring-error placeholder:text-outline/40 shadow-inner" />
+                    <button id="btn-clear-plate" type="button" aria-label="Borrar placa" class="absolute right-3 text-outline hover:text-on-surface transition-colors flex">
+                      <span class="material-symbols-outlined text-[20px]" aria-hidden="true">cancel</span>
+                    </button>
+                  </div>
+                  <div class="flex flex-wrap items-center justify-between gap-x-space-sm mt-1 px-1">
+                    <span id="plate-help" class="font-body-sm text-body-sm text-outline"></span>
+                    <label class="flex items-center gap-1 font-body-sm text-body-sm text-on-surface-variant cursor-pointer">
+                      <input id="plate-other" type="checkbox" class="accent-primary-container" />Otra placa (extranjera/especial)
+                    </label>
+                  </div>
+                  <p data-error-for="plate" hidden class="mt-1 px-1 font-body-sm text-body-sm text-error"></p>
+                </div>
+                <div class="sm:col-span-12">
+                  <label for="vehicle-line" class="block font-label-sm text-label-sm text-outline mb-1">Línea y color *</label>
+                  <input id="vehicle-line" name="vehicleLine" type="text" maxlength="60" autocomplete="off" placeholder="Ej. Mazda 3 Touring gris"
+                    class="w-full h-11 px-space-sm bg-surface-container-lowest rounded-xl font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary aria-[invalid=true]:ring-2 aria-[invalid=true]:ring-error placeholder:text-outline/50" />
+                  <p data-error-for="vehicleLine" hidden class="mt-1 font-body-sm text-body-sm text-error"></p>
+                </div>
+              </div>
+            </section>
+
+            <!-- Paso 3: servicios -->
+            <section aria-labelledby="step-services" class="bg-surface-container-low rounded-xl p-space-md sm:p-space-lg shadow-sm">
+              <div class="flex items-center gap-space-xs mb-space-md">
+                <span class="w-6 h-6 shrink-0 rounded-full bg-primary-container text-on-primary-container font-label-sm text-label-sm flex items-center justify-center font-bold">3</span>
+                <h2 id="step-services" class="font-label-lg text-label-lg uppercase tracking-wider">Servicios</h2>
+              </div>
+
+              <div class="relative mb-space-md">
+                <label for="service-search" class="sr-only">Buscar servicio</label>
+                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-primary text-[20px] pointer-events-none" aria-hidden="true">search</span>
+                <input id="service-search" type="search" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="service-results" aria-autocomplete="list"
+                  placeholder="Buscar servicio (ej. Polichado, Cerámico…)"
+                  class="w-full h-11 bg-surface-container-lowest pl-10 pr-space-md rounded-xl focus:outline-none focus:ring-2 focus:ring-primary placeholder:text-outline/50 shadow-inner" />
+                <ul id="service-results" role="listbox" hidden
+                  class="absolute z-20 left-0 right-0 mt-1 max-h-72 overflow-y-auto bg-surface-container-high rounded-xl shadow-2xl p-1"></ul>
+              </div>
+
+              <div id="quick-services" class="grid grid-cols-2 sm:grid-cols-3 gap-space-xs mb-space-md"></div>
+
+              <div id="items-list" class="flex flex-col gap-space-sm"></div>
+              <p id="items-empty" class="py-space-md text-center font-body-sm text-body-sm text-outline">Agrega al menos un servicio con el buscador o los accesos rápidos.</p>
+              <p data-error-for="items" hidden class="mt-1 font-body-sm text-body-sm text-error"></p>
+            </section>
+
+            <!-- Paso 4: forma de pago -->
+            <section aria-labelledby="step-payment" class="bg-surface-container-low rounded-xl p-space-md sm:p-space-lg shadow-sm">
+              <div class="flex items-center gap-space-xs mb-space-md">
+                <span class="w-6 h-6 shrink-0 rounded-full bg-primary-container text-on-primary-container font-label-sm text-label-sm flex items-center justify-center font-bold">4</span>
+                <h2 id="step-payment" class="font-label-lg text-label-lg uppercase tracking-wider">Forma de Pago</h2>
+              </div>
+              <div id="payment-methods" role="group" aria-labelledby="step-payment" class="grid grid-cols-1 sm:grid-cols-3 gap-space-sm">
+                <button type="button" data-payment="cash" aria-pressed="false"
+                  class="p-space-sm rounded-xl bg-surface-container text-on-surface-variant hover:text-on-surface flex flex-col items-center gap-1 transition-all aria-pressed:bg-primary-container aria-pressed:text-on-primary-container aria-pressed:shadow-sm">
+                  <span class="material-symbols-outlined text-[28px]" aria-hidden="true">payments</span>
+                  <span class="font-label-md text-label-md font-bold">Efectivo</span>
+                  <span class="font-label-sm text-label-sm opacity-75">Caja</span>
+                </button>
+                <button type="button" data-payment="transfer" aria-pressed="false"
+                  class="p-space-sm rounded-xl bg-surface-container text-on-surface-variant hover:text-on-surface flex flex-col items-center gap-1 transition-all aria-pressed:bg-primary-container aria-pressed:text-on-primary-container aria-pressed:shadow-sm">
+                  <span class="material-symbols-outlined text-[28px]" aria-hidden="true">phonelink_ring</span>
+                  <span class="font-label-md text-label-md font-bold">Transferencia</span>
+                  <span class="font-label-sm text-label-sm opacity-75">Bancolombia / Nequi</span>
+                </button>
+                <button type="button" data-payment="credit" aria-pressed="false"
+                  class="p-space-sm rounded-xl bg-surface-container text-tertiary hover:bg-surface-container-high flex flex-col items-center gap-1 transition-all aria-pressed:bg-tertiary-container aria-pressed:text-on-tertiary-container aria-pressed:shadow-sm">
+                  <span class="material-symbols-outlined text-[28px]" aria-hidden="true">assignment_late</span>
+                  <span class="font-label-md text-label-md font-bold">A Crédito</span>
+                  <span class="font-label-sm text-label-sm opacity-75">Queda en cartera</span>
+                </button>
+              </div>
+              <p data-error-for="paymentMethod" hidden class="mt-space-sm font-body-sm text-body-sm text-error"></p>
+            </section>
+
+            <!-- Paso 5: factura electrónica -->
+            <section aria-labelledby="step-invoice" class="bg-surface-container-low rounded-xl p-space-md sm:p-space-lg shadow-sm">
+              <div class="flex items-center justify-between gap-space-sm">
+                <div class="flex items-center gap-space-xs">
+                  <span class="w-6 h-6 shrink-0 rounded-full bg-primary-container text-on-primary-container font-label-sm text-label-sm flex items-center justify-center font-bold">5</span>
+                  <div>
+                    <h2 id="step-invoice" class="font-label-lg text-label-lg uppercase tracking-wider">Factura Electrónica DIAN</h2>
+                    <p class="font-body-sm text-body-sm text-outline">Se emite a través de Siigo</p>
+                  </div>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                  <span class="sr-only">Generar factura electrónica</span>
+                  <input id="invoice-toggle" type="checkbox" class="sr-only peer" />
+                  <span class="w-11 h-6 bg-surface-container-highest rounded-full peer-checked:bg-primary-container peer-focus-visible:ring-2 peer-focus-visible:ring-primary transition-colors after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></span>
+                </label>
+              </div>
+              <div id="invoice-block" hidden class="mt-space-md flex flex-col gap-space-sm">
+                <div role="radiogroup" aria-label="Facturar a nombre de" class="grid grid-cols-1 sm:grid-cols-2 gap-space-sm">
+                  <label class="flex items-start gap-space-xs p-space-sm rounded-xl bg-surface-container cursor-pointer has-checked:ring-2 has-checked:ring-primary">
+                    <input type="radio" name="invoice-recipient" value="customer" class="mt-1 accent-primary-container" checked />
+                    <span><span class="font-label-md text-label-md font-bold block">Con datos del cliente</span><span class="font-body-sm text-body-sm text-outline">El cliente pidió factura a su nombre</span></span>
+                  </label>
+                  <label class="flex items-start gap-space-xs p-space-sm rounded-xl bg-surface-container cursor-pointer has-checked:ring-2 has-checked:ring-primary">
+                    <input type="radio" name="invoice-recipient" value="final-consumer" class="mt-1 accent-primary-container" />
+                    <span><span class="font-label-md text-label-md font-bold block">Consumidor final</span><span class="font-body-sm text-body-sm text-outline">A nombre de 222222222222</span></span>
+                  </label>
+                </div>
+                <p class="flex items-center gap-1 font-body-sm text-body-sm text-on-surface-variant">
+                  <span class="material-symbols-outlined text-[16px] text-secondary" aria-hidden="true">schedule_send</span>
+                  Quedará pendiente y se enviará a la DIAN cuando la integración con Siigo esté activa.
+                </p>
+              </div>
+            </section>
+
+            <!-- Datos del cliente (crédito o factura a nombre del cliente) -->
+            <section id="customer-block" hidden aria-labelledby="step-customer" class="bg-surface-container-low rounded-xl p-space-md sm:p-space-lg shadow-sm">
+              <div class="flex items-center gap-space-xs mb-space-xs">
+                <span class="material-symbols-outlined text-tertiary text-[20px]" aria-hidden="true">badge</span>
+                <h2 id="step-customer" class="font-label-lg text-label-lg uppercase tracking-wider">Datos del Cliente</h2>
+              </div>
+              <p id="customer-reason" class="font-body-sm text-body-sm text-on-surface-variant mb-space-md"></p>
+
+              <div data-invoice-only class="flex flex-wrap items-center gap-x-space-lg gap-y-space-xs bg-surface-container px-space-md py-2.5 rounded-lg mb-space-sm">
+                <span class="font-label-sm text-label-sm text-outline uppercase tracking-wider">Tipo de persona</span>
+                <label class="flex items-center gap-space-xs cursor-pointer font-label-md text-label-md">
+                  <input type="radio" name="person-type" value="natural" class="accent-primary-container" checked />Persona Natural
+                </label>
+                <label class="flex items-center gap-space-xs cursor-pointer font-label-md text-label-md">
+                  <input type="radio" name="person-type" value="legal" class="accent-primary-container" />Persona Jurídica (Empresa)
+                </label>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-12 gap-space-sm">
+                <div class="sm:col-span-4">
+                  <label for="customer-document-type" class="block font-label-sm text-label-sm text-outline mb-1">Tipo de documento</label>
+                  <select id="customer-document-type" class="w-full h-10 px-space-sm bg-surface-container rounded-lg focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer">
+                    <option value="CC">Cédula de Ciudadanía (CC)</option>
+                    <option value="NIT">NIT</option>
+                    <option value="CE">Cédula de Extranjería (CE)</option>
+                    <option value="PP">Pasaporte</option>
+                  </select>
+                </div>
+                <div class="sm:col-span-6">
+                  <label for="customer-document" class="block font-label-sm text-label-sm text-outline mb-1">Cédula / NIT *</label>
+                  <input id="customer-document" type="text" inputmode="numeric" autocomplete="off" maxlength="20" placeholder="1020456789"
+                    class="w-full h-10 px-space-sm bg-surface-container rounded-lg font-mono focus:outline-none focus:ring-1 focus:ring-primary aria-[invalid=true]:ring-2 aria-[invalid=true]:ring-error" />
+                  <p data-error-for="documentNumber" hidden class="mt-1 font-body-sm text-body-sm text-error"></p>
+                </div>
+                <div id="customer-dv-wrapper" hidden class="sm:col-span-2">
+                  <label for="customer-dv" class="block font-label-sm text-label-sm text-outline mb-1">DV</label>
+                  <input id="customer-dv" type="text" readonly tabindex="-1" class="w-full h-10 px-space-sm bg-surface-container text-on-surface-variant rounded-lg text-center font-mono" />
+                </div>
+                <div class="sm:col-span-7">
+                  <label for="customer-name" class="block font-label-sm text-label-sm text-outline mb-1">Nombre completo / Razón social *</label>
+                  <input id="customer-name" type="text" autocomplete="off" maxlength="120"
+                    class="w-full h-10 px-space-sm bg-surface-container rounded-lg focus:outline-none focus:ring-1 focus:ring-primary aria-[invalid=true]:ring-2 aria-[invalid=true]:ring-error" />
+                  <p data-error-for="customerName" hidden class="mt-1 font-body-sm text-body-sm text-error"></p>
+                </div>
+                <div class="sm:col-span-5">
+                  <label for="customer-phone" class="block font-label-sm text-label-sm text-outline mb-1">Celular / WhatsApp <span id="customer-phone-required">*</span></label>
+                  <input id="customer-phone" type="tel" inputmode="tel" autocomplete="off" maxlength="16" placeholder="300 123 4567"
+                    class="w-full h-10 px-space-sm bg-surface-container rounded-lg font-mono focus:outline-none focus:ring-1 focus:ring-primary aria-[invalid=true]:ring-2 aria-[invalid=true]:ring-error" />
+                  <p data-error-for="phone" hidden class="mt-1 font-body-sm text-body-sm text-error"></p>
+                </div>
+                <div data-invoice-only class="sm:col-span-7">
+                  <label for="customer-email" class="block font-label-sm text-label-sm text-outline mb-1">Correo para la factura *</label>
+                  <input id="customer-email" type="email" autocomplete="off" maxlength="120"
+                    class="w-full h-10 px-space-sm bg-surface-container rounded-lg focus:outline-none focus:ring-1 focus:ring-primary aria-[invalid=true]:ring-2 aria-[invalid=true]:ring-error" />
+                  <p data-error-for="email" hidden class="mt-1 font-body-sm text-body-sm text-error"></p>
+                </div>
+                <div data-invoice-only class="sm:col-span-5">
+                  <label for="customer-city" class="block font-label-sm text-label-sm text-outline mb-1">Ciudad / Dpto *</label>
+                  <input id="customer-city" type="text" autocomplete="off" maxlength="60" value="Medellín, Antioquia"
+                    class="w-full h-10 px-space-sm bg-surface-container rounded-lg focus:outline-none focus:ring-1 focus:ring-primary aria-[invalid=true]:ring-2 aria-[invalid=true]:ring-error" />
+                  <p data-error-for="city" hidden class="mt-1 font-body-sm text-body-sm text-error"></p>
+                </div>
+                <div data-invoice-only class="sm:col-span-7">
+                  <label for="customer-address" class="block font-label-sm text-label-sm text-outline mb-1">Dirección *</label>
+                  <input id="customer-address" type="text" autocomplete="off" maxlength="120"
+                    class="w-full h-10 px-space-sm bg-surface-container rounded-lg focus:outline-none focus:ring-1 focus:ring-primary aria-[invalid=true]:ring-2 aria-[invalid=true]:ring-error" />
+                  <p data-error-for="address" hidden class="mt-1 font-body-sm text-body-sm text-error"></p>
+                </div>
+                <div data-invoice-only class="sm:col-span-5">
+                  <label for="customer-tax-regime" class="block font-label-sm text-label-sm text-outline mb-1">Régimen fiscal</label>
+                  <select id="customer-tax-regime" class="w-full h-10 px-space-sm bg-surface-container rounded-lg focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer">
+                    <option value="not-vat-responsible">No responsable de IVA (49)</option>
+                    <option value="vat-responsible">Responsable de IVA (48)</option>
+                  </select>
+                </div>
+              </div>
+            </section>
+
+            <!-- Paso 6: notas -->
+            <section aria-labelledby="step-notes" class="bg-surface-container-low rounded-xl p-space-md sm:p-space-lg shadow-sm">
+              <div class="flex items-center justify-between mb-space-sm">
+                <div class="flex items-center gap-space-xs">
+                  <span class="w-6 h-6 shrink-0 rounded-full bg-primary-container text-on-primary-container font-label-sm text-label-sm flex items-center justify-center font-bold">6</span>
+                  <h2 id="step-notes" class="font-label-lg text-label-lg uppercase tracking-wider">Notas de Entrega</h2>
+                </div>
+                <span class="font-label-sm text-label-sm text-outline">Opcional</span>
+              </div>
+              <label for="notes" class="sr-only">Notas</label>
+              <textarea id="notes" rows="2" maxlength="250"
+                placeholder="Ej. Raya leve en puerta derecha, cliente recoge a las 5:30 p. m."
+                class="w-full p-space-sm bg-surface-container rounded-lg focus:outline-none focus:ring-1 focus:ring-primary placeholder:text-outline/50 resize-none"></textarea>
+              <p class="text-right font-label-sm text-label-sm text-outline"><span id="notes-count">0</span> / 250</p>
+            </section>
+          </fieldset>
+
+          <!-- Columna derecha: ticket en vivo -->
+          <aside class="xl:col-span-5 xl:sticky xl:top-20 flex flex-col gap-space-md">
+            <div class="bg-surface-container-low rounded-xl p-space-md sm:p-space-lg shadow-xl">
+              <div class="flex items-start justify-between gap-space-sm mb-space-md bg-surface-container/60 p-space-sm rounded-xl">
+                <div class="flex items-center gap-space-sm">
+                  <img data-logo alt="" class="h-10 w-auto object-contain" />
+                  <div>
+                    <span id="ticket-business" class="font-label-lg text-label-lg font-bold tracking-wider block"></span>
+                    <span id="ticket-nit" class="font-label-sm text-label-sm text-outline"></span>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <span class="font-label-sm text-label-sm px-2 py-0.5 rounded bg-primary-container/20 text-primary font-bold">NUEVA ORDEN</span>
+                  <div id="ticket-date" class="font-label-sm text-label-sm text-outline mt-0.5"></div>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-space-sm bg-surface-container-lowest p-space-md rounded-xl mb-space-md shadow-inner">
+                <span class="w-1.5 h-10 bg-yellow-400 rounded-full" aria-hidden="true"></span>
+                <div class="min-w-0">
+                  <span class="font-label-sm text-label-sm text-outline uppercase tracking-wider block">Vehículo</span>
+                  <div class="flex items-center gap-space-xs">
+                    <span id="ticket-plate" class="font-headline-md text-headline-md font-mono font-bold tracking-wider">———</span>
+                    <span id="ticket-type" class="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-surface-container"></span>
+                  </div>
+                  <span id="ticket-line" class="font-body-sm text-body-sm text-on-surface-variant block truncate"></span>
+                </div>
+              </div>
+
+              <span class="font-label-sm text-label-sm text-outline uppercase tracking-wider block mb-space-xs">Servicios</span>
+              <ul id="ticket-items" class="space-y-2 mb-space-md"></ul>
+              <p id="ticket-items-empty" class="mb-space-md font-body-sm text-body-sm text-outline">Sin servicios todavía.</p>
+
+              <dl class="bg-surface-container p-space-md rounded-xl space-y-space-xs mb-space-md">
+                <div class="flex items-center justify-between text-outline">
+                  <dt>Subtotal</dt><dd id="ticket-subtotal" class="font-medium text-on-surface"></dd>
+                </div>
+                <div class="flex items-center justify-between text-tertiary">
+                  <dt class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]" aria-hidden="true">loyalty</span>Descuentos</dt>
+                  <dd id="ticket-discount" class="font-medium"></dd>
+                </div>
+                <div class="flex items-center justify-between text-outline">
+                  <dt>Forma de pago</dt><dd id="ticket-payment" class="font-medium text-on-surface"></dd>
+                </div>
+                <div class="flex items-start justify-between gap-space-sm text-outline">
+                  <dt>Vendedores</dt><dd id="ticket-sellers" class="font-medium text-on-surface text-right"></dd>
+                </div>
+                <div class="pt-space-xs flex items-baseline justify-between">
+                  <dt class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Total</dt>
+                  <dd class="text-right">
+                    <span id="ticket-total" class="font-currency-display text-currency-display text-primary font-bold tracking-tight"></span>
+                    <span class="font-label-sm text-label-sm text-primary-fixed-dim block font-semibold">COP</span>
+                  </dd>
+                </div>
+              </dl>
+
+              <button id="btn-submit" type="submit"
+                class="w-full py-4 px-space-lg bg-primary-container hover:bg-secondary-container disabled:opacity-60 disabled:cursor-wait text-on-primary-container font-headline-md text-headline-md rounded-xl font-bold flex items-center justify-center gap-space-sm transition-all shadow-[0_0_20px_rgba(37,99,235,0.4)] active:scale-[0.98]">
+                <span class="material-symbols-outlined text-[26px]" aria-hidden="true">point_of_sale</span>
+                <span id="btn-submit-text">Registrar venta</span>
+              </button>
+
+              <!-- Progreso del registro -->
+              <ol id="submit-progress" hidden aria-live="polite" class="mt-space-md flex flex-col gap-space-xs bg-surface-container p-space-md rounded-xl">
+                <li data-step="save" class="flex items-center gap-space-sm"><span data-icon class="material-symbols-outlined text-[20px]" aria-hidden="true"></span><span data-label></span></li>
+                <li data-step="invoice" class="flex items-center gap-space-sm"><span data-icon class="material-symbols-outlined text-[20px]" aria-hidden="true"></span><span data-label></span></li>
+                <li data-step="print" class="flex items-center gap-space-sm"><span data-icon class="material-symbols-outlined text-[20px]" aria-hidden="true"></span><span data-label></span></li>
+              </ol>
+            </div>
+
+            <!-- Venta registrada -->
+            <div id="success-card" hidden tabindex="-1" class="bg-surface-container-high rounded-xl p-space-md sm:p-space-lg shadow-2xl focus:outline-none">
+              <div class="flex items-center gap-space-sm mb-space-sm">
+                <span class="material-symbols-outlined text-[28px] text-green-400" aria-hidden="true">check_circle</span>
+                <div>
+                  <h2 class="font-headline-md text-headline-md font-bold">¡Venta registrada!</h2>
+                  <p id="success-order" class="font-label-md text-label-md text-outline"></p>
+                </div>
+              </div>
+              <p id="success-invoice" class="font-body-md text-body-md text-on-surface-variant mb-space-md"></p>
+              <div class="flex flex-col gap-space-xs">
+                <a id="btn-whatsapp" target="_blank" rel="noopener"
+                  class="w-full py-3 px-space-md bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-label-lg text-label-lg font-bold flex items-center justify-center gap-space-xs transition-colors">
+                  <span class="material-symbols-outlined text-[20px]" aria-hidden="true">chat</span>Enviar por WhatsApp
+                </a>
+                <button id="btn-print" type="button"
+                  class="w-full py-2.5 px-space-md bg-surface-container hover:bg-surface-container-highest rounded-xl font-label-md text-label-md font-semibold flex items-center justify-center gap-space-xs transition-colors">
+                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true">print</span>Imprimir tirilla (80 mm)
+                </button>
+                <a id="btn-history" href="/html/historial.html"
+                  class="w-full py-2.5 px-space-md bg-surface-container hover:bg-surface-container-highest rounded-xl font-label-md text-label-md font-semibold flex items-center justify-center gap-space-xs transition-colors">
+                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true">history</span>Ver en el historial
+                </a>
+                <button id="btn-new-sale" type="button" class="w-full py-2 text-primary hover:text-on-surface font-label-md text-label-md transition-colors">
+                  + Registrar otra venta
+                </button>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </form>
+    </main>
+
+    <template id="tpl-seller-chip">
+      <li class="flex items-center gap-space-xs pl-1 pr-1 py-1 rounded-full bg-primary-container text-on-primary-container">
+        <span data-field="initials" class="w-7 h-7 rounded-full bg-on-primary-container/15 font-label-sm text-label-sm font-bold flex items-center justify-center"></span>
+        <span data-field="name" class="font-label-md text-label-md font-semibold"></span>
+        <button data-field="remove" type="button" class="p-0.5 rounded-full hover:bg-on-primary-container/20 flex">
+          <span class="material-symbols-outlined text-[18px]" aria-hidden="true">close</span>
+        </button>
+      </li>
+    </template>
+
+    <template id="tpl-seller-option">
+      <li role="option" class="flex items-center gap-space-sm px-space-sm py-2 rounded-lg cursor-pointer hover:bg-surface-bright aria-selected:bg-surface-bright">
+        <span data-field="initials" class="w-7 h-7 rounded-full bg-surface-container-highest text-secondary font-label-sm text-label-sm font-bold flex items-center justify-center"></span>
+        <span data-field="name"></span>
+      </li>
+    </template>
+
+    <template id="tpl-quick-service">
+      <button type="button"
+        class="flex items-center justify-between gap-1 p-space-sm bg-surface-container hover:bg-surface-container-high rounded-xl text-left transition-all active:scale-[0.98] group">
+        <span data-field="name" class="font-label-md text-label-md font-semibold leading-tight line-clamp-2"></span>
+        <span data-field="icon" class="material-symbols-outlined text-outline group-hover:text-primary text-[18px] shrink-0" aria-hidden="true">add_circle</span>
+      </button>
+    </template>
+
+    <template id="tpl-service-option">
+      <li role="option" class="flex items-center gap-space-xs px-space-sm py-2 rounded-lg cursor-pointer hover:bg-surface-bright aria-selected:bg-surface-bright">
+        <span data-field="icon" class="material-symbols-outlined text-[18px] text-primary" aria-hidden="true">add_circle</span>
+        <span data-field="name"></span>
+      </li>
+    </template>
+
+    <template id="tpl-item-row">
+      <div class="bg-surface-container p-space-sm sm:p-space-md rounded-xl flex flex-col md:flex-row md:items-start justify-between gap-space-sm">
+        <div class="flex items-center gap-space-sm flex-1 min-w-0">
+          <span class="material-symbols-outlined text-primary text-[22px] shrink-0" aria-hidden="true">check_circle</span>
+          <div class="min-w-0 flex-1">
+            <input data-field="name" type="text" maxlength="80" aria-label="Nombre del servicio"
+              class="w-full bg-transparent font-label-lg text-label-lg focus:outline-none focus:bg-surface-container-highest px-1.5 py-0.5 rounded aria-[invalid=true]:ring-1 aria-[invalid=true]:ring-error" />
+            <span data-field="line-total" class="px-1.5 font-label-sm text-label-sm text-outline"></span>
+          </div>
+        </div>
+        <div class="flex flex-col items-end gap-1">
+          <div class="flex items-center gap-space-sm">
+            <label class="flex items-center bg-surface-container-lowest px-space-sm py-1.5 rounded-lg has-[[aria-invalid=true]]:ring-1 has-[[aria-invalid=true]]:ring-error">
+              <span class="font-label-sm text-label-sm text-outline mr-1">$</span>
+              <input data-field="price" type="text" inputmode="numeric" autocomplete="off" maxlength="11" placeholder="0" aria-label="Precio"
+                class="w-24 bg-transparent font-label-lg text-label-lg font-bold text-right focus:outline-none" />
+            </label>
+            <label class="flex items-center bg-surface-container-lowest px-space-xs py-1.5 rounded-lg" title="Descuento">
+              <input data-field="discount" type="text" inputmode="numeric" autocomplete="off" maxlength="3" value="0" aria-label="Descuento en porcentaje (0 a 100)"
+                class="w-12 bg-transparent font-label-md text-label-md text-right focus:outline-none" />
+              <span class="material-symbols-outlined text-outline text-[16px] ml-0.5" aria-hidden="true">percent</span>
+            </label>
+            <button data-field="remove" type="button" aria-label="Quitar servicio" title="Quitar servicio"
+              class="p-1.5 text-outline hover:text-error hover:bg-error-container/20 rounded-lg transition-colors flex">
+              <span class="material-symbols-outlined text-[18px]" aria-hidden="true">delete</span>
+            </button>
+          </div>
+          <p data-field="error" hidden class="font-body-sm text-body-sm text-error"></p>
+        </div>
+      </div>
+    </template>
+
+    <template id="tpl-ticket-item">
+      <li class="flex items-start justify-between gap-space-sm">
+        <div class="min-w-0">
+          <span data-field="name" class="font-medium block truncate"></span>
+          <span data-field="discount" class="text-outline text-label-sm"></span>
+        </div>
+        <span data-field="total" class="font-semibold shrink-0"></span>
+      </li>
+    </template>
+  </body>
+</html>

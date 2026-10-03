@@ -3,7 +3,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ---- Funciones de apoyo ----
+    // ---------- Funciones de apoyo ----------
 
     // Correo de la sesión en minúsculas (los IDs de users/ están en minúsculas).
     function sessionEmail() {
@@ -29,29 +29,176 @@ service cloud.firestore {
       return signedIn() && profile.active == true && profile.role in roles;
     }
 
+    function isMember() {
+      return hasRole(['admin', 'manager', 'basic']);
+    }
+
     // Medianoche de hoy en Colombia (UTC-5), con 15 min de tolerancia por
-    // diferencias de reloj del dispositivo. El manager no puede leer días anteriores.
+    // diferencias de reloj del dispositivo.
     function isToday(date) {
       let bogotaMidnight = (request.time - duration.value(5, 'h')).date() + duration.value(5, 'h');
       return date >= bogotaMidnight - duration.value(15, 'm');
     }
 
-    // ---- Perfiles ----
-    // El ID del documento es el correo en minúsculas
-    // (usuarios sin correo: usuario@usuarios.labcar.local).
+    function counterPath() {
+      return /databases/$(database)/documents/counters/sales;
+    }
+
+    function salePath(number) {
+      return /databases/$(database)/documents/sales/$('LC-' + string(number));
+    }
+
+    // Reparto de la comisión: cada vendedor recibe una parte igual (±1 peso por redondeo),
+    // las partes suman exactamente la comisión y cada vendedor es un usuario del sistema.
+    // Solo aritmética entera: parte × n debe quedar a menos de n pesos de la comisión.
+    function isValidSeller(d, i) {
+      let n = d.sellers.size();
+      let share = d.sellers[i].commission;
+      return d.sellers[i].keys().hasOnly(['email', 'name', 'commission'])
+        && d.sellers[i].email == d.sellerEmails[i]
+        && d.sellers[i].name is string
+        && share is int
+        && share * n > d.commission - n
+        && share * n < d.commission + n
+        && exists(/databases/$(database)/documents/users/$(d.sellerEmails[i]));
+    }
+
+    function isValidSellers(d) {
+      let n = d.sellers.size();
+      let s = d.sellers;
+      return n >= 1 && n <= 4
+        && d.sellerEmails is list && d.sellerEmails.size() == n
+        && isValidSeller(d, 0)
+        && (n < 2 || isValidSeller(d, 1))
+        && (n < 3 || isValidSeller(d, 2))
+        && (n < 4 || isValidSeller(d, 3))
+        && ((n == 1 && s[0].commission == d.commission)
+          || (n == 2 && s[0].commission + s[1].commission == d.commission)
+          || (n == 3 && s[0].commission + s[1].commission + s[2].commission == d.commission)
+          || (n == 4 && s[0].commission + s[1].commission + s[2].commission + s[3].commission == d.commission));
+    }
+
+    function isValidInvoice(invoice) {
+      return invoice.keys().hasOnly(['status', 'recipient', 'number', 'cufe', 'pdfUrl', 'error'])
+        && ((invoice.status == 'not-requested' && invoice.recipient == null)
+          || (invoice.status == 'pending' && invoice.recipient in ['customer', 'final-consumer']))
+        && invoice.number == null && invoice.cufe == null && invoice.pdfUrl == null && invoice.error == null;
+    }
+
+    // Venta nueva coherente. Cuando exista la Firebase Function, ella registrará
+    // las ventas (y validará cada servicio) y estas reglas quedarán como respaldo.
+    function isValidNewSale(saleId) {
+      let d = request.resource.data;
+      let rate = get(/databases/$(database)/documents/settings/commissions).data.rate;
+      return d.keys().hasOnly(['number', 'requestId', 'date', 'vehicleType', 'plate', 'vehicleLine', 'items',
+          'subtotal', 'discount', 'total', 'commissionRate', 'commission', 'sellers', 'sellerEmails',
+          'paymentMethod', 'status', 'dueDate', 'customer', 'invoice', 'notes', 'createdBy', 'void'])
+        // Consecutivo: es el valor que deja el contador en la misma transacción.
+        && d.number is int
+        && d.number == getAfter(counterPath()).data.value
+        && saleId == 'LC-' + string(d.number)
+        // Registro de idempotencia creado en la misma transacción (evita ventas duplicadas al reintentar).
+        && d.requestId is string
+        && getAfter(/databases/$(database)/documents/saleRequests/$(d.requestId)).data.saleId == saleId
+        && d.date == request.time
+        && d.vehicleType in ['car', 'motorcycle']
+        && d.plate is string && d.plate.matches('^[A-Z0-9]{3,10}$')
+        && d.vehicleLine is string && d.vehicleLine.size() >= 2 && d.vehicleLine.size() <= 60
+        && d.items is list && d.items.size() >= 1 && d.items.size() <= 20
+        && d.subtotal is int && d.discount is int && d.total is int
+        && d.discount >= 0 && d.total >= 0 && d.total == d.subtotal - d.discount
+        // Comisión: la tasa vigente sobre el valor facturado.
+        && d.commissionRate == rate
+        && d.commission is int
+        && d.commission - d.total * rate <= 0.5
+        && d.total * rate - d.commission <= 0.5
+        && isValidSellers(d)
+        && d.paymentMethod in ['cash', 'transfer', 'credit']
+        && ((d.paymentMethod == 'credit' && d.status == 'pending' && d.customer != null
+            && d.dueDate is timestamp && d.dueDate > request.time)
+          || (d.paymentMethod != 'credit' && d.status == 'paid' && d.dueDate == null))
+        && isValidInvoice(d.invoice)
+        && d.notes is string && d.notes.size() <= 250
+        && d.createdBy.keys().hasOnly(['email', 'name'])
+        && d.createdBy.email == sessionEmail()
+        && d.void == null;
+    }
+
+    // Anulación: solo cambia status → void y registra quién, cuándo y por qué.
+    function isValidVoid() {
+      let d = request.resource.data;
+      return resource.data.status != 'void'
+        && d.diff(resource.data).affectedKeys().hasOnly(['status', 'void'])
+        && d.status == 'void'
+        && d.void.keys().hasOnly(['at', 'by', 'reason'])
+        && d.void.at == request.time
+        && d.void.by == sessionEmail()
+        && d.void.reason is string && d.void.reason.size() >= 5 && d.void.reason.size() <= 200;
+    }
+
+    // ---------- Usuarios ----------
+    // ID = correo en minúsculas (usuarios sin correo: usuario@usuarios.labcar.local).
+    // Todo el equipo puede ver la lista: son los vendedores que se eligen en cada venta.
     match /users/{email} {
-      allow read: if signedIn() && sessionEmail() == email;
+      allow get: if signedIn() && (sessionEmail() == email || isMember());
+      allow list: if isMember();
       allow write: if false;
     }
 
-    // ---- Ventas y gastos ----
-    // Escritura bloqueada hasta construir los módulos de Ventas y Gastos.
+    // ---------- Catálogo y configuración (los editará el módulo de administración) ----------
+    match /services/{serviceId} {
+      allow read: if isMember();
+      allow write: if false;
+    }
+
+    match /settings/{settingId} {
+      allow read: if isMember();
+      allow write: if false;
+    }
+
+    // ---------- Consecutivo de ventas ----------
+    // Solo puede avanzar de uno en uno y junto con la venta de ese número.
+    match /counters/sales {
+      allow read: if isMember();
+      allow create: if isMember()
+        && request.resource.data.keys().hasOnly(['value'])
+        && request.resource.data.value == 1
+        && existsAfter(salePath(1));
+      allow update: if isMember()
+        && request.resource.data.keys().hasOnly(['value'])
+        && request.resource.data.value == resource.data.value + 1
+        && existsAfter(salePath(request.resource.data.value));
+    }
+
+    // ---------- Registros de idempotencia ----------
+    // Un registro por intento de venta (ID generado al abrir el formulario). Si la respuesta
+    // de Firestore se pierde y el usuario reintenta, la transacción encuentra este registro
+    // y devuelve la venta ya creada en vez de duplicarla.
+    match /saleRequests/{requestId} {
+      allow get: if isMember() && (resource == null || resource.data.createdBy == sessionEmail());
+      allow create: if isMember()
+        && request.resource.data.keys().hasOnly(['saleId', 'createdBy'])
+        && request.resource.data.createdBy == sessionEmail()
+        && getAfter(/databases/$(database)/documents/sales/$(request.resource.data.saleId)).data.requestId == requestId;
+      allow update, delete: if false;
+    }
+
+    // ---------- Ventas ----------
+    // Admin y manager ven todas; basic solo aquellas en las que es vendedor
+    // (o que registró, para poder imprimir el recibo). Nunca se borran: se anulan.
     match /sales/{saleId} {
-      allow read: if hasRole(['admin'])
-        || (hasRole(['manager']) && isToday(resource.data.date));
-      allow write: if false;
+      allow get: if hasRole(['admin', 'manager'])
+        || (hasRole(['basic'])
+          && (sessionEmail() in resource.data.sellerEmails || resource.data.createdBy.email == sessionEmail()));
+      allow list: if hasRole(['admin', 'manager'])
+        || (hasRole(['basic']) && sessionEmail() in resource.data.sellerEmails);
+      allow create: if isMember() && isValidNewSale(saleId);
+      allow update: if hasRole(['admin', 'manager']) && isValidVoid();
+      allow delete: if false;
     }
 
+    // ---------- Gastos ----------
+    // Escritura bloqueada hasta construir el módulo de Gastos.
     match /expenses/{expenseId} {
       allow read: if hasRole(['admin'])
         || (hasRole(['manager']) && isToday(resource.data.date));

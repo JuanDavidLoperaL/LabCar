@@ -22,6 +22,18 @@ const shortDateTimeFormatter = new Intl.DateTimeFormat('es-CO', {
   minute: '2-digit',
 });
 
+const shortDateFormatter = new Intl.DateTimeFormat('es-CO', {
+  timeZone: BOGOTA_TIME_ZONE,
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+});
+
+/** 18 oct 2026 */
+export function formatShortDate(date: Date): string {
+  return shortDateFormatter.format(date);
+}
+
 /** $ 1.850.000 */
 export function formatCOP(value: number): string {
   return copFormatter.format(Math.round(value));

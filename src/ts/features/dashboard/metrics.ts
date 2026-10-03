@@ -1,14 +1,20 @@
 import type { Expense } from '../../models/expense';
 import type { Sale } from '../../models/sale';
 
-/** Lo que se le debe pagar a un empleado en el periodo, con el detalle de cada servicio. */
+/** Participación de un empleado en una venta: la venta y su parte de la comisión. */
+export interface PayoutEntry {
+  sale: Sale;
+  commission: number;
+}
+
+/** Lo que se le debe pagar a un empleado en el periodo, con el detalle de cada venta. */
 export interface SellerPayout {
   sellerName: string;
-  /** Valor total de los servicios que hizo. */
+  /** Valor total de las ventas en las que participó. */
   soldTotal: number;
   commission: number;
-  /** Servicios del periodo, del más reciente al más antiguo. */
-  sales: Sale[];
+  /** Ventas del periodo, de la más reciente a la más antigua. */
+  entries: PayoutEntry[];
 }
 
 export interface DashboardMetrics {
@@ -35,21 +41,28 @@ function topExpenseCategories(expenses: readonly Expense[], limit: number): stri
     .map(([category]) => category);
 }
 
+/** Una venta con varios vendedores suma en cada uno solo su parte de la comisión. */
 function sellerPayouts(sales: readonly Sale[]): SellerPayout[] {
   const bySeller = new Map<string, SellerPayout>();
   for (const sale of sales) {
-    const key = sale.sellerId || sale.sellerName;
-    const payout = bySeller.get(key) ?? { sellerName: sale.sellerName, soldTotal: 0, commission: 0, sales: [] };
-    payout.soldTotal += sale.total;
-    payout.commission += sale.commission;
-    payout.sales.push(sale);
-    bySeller.set(key, payout);
+    for (const seller of sale.sellers) {
+      const key = seller.email || seller.name;
+      const payout = bySeller.get(key) ?? { sellerName: seller.name, soldTotal: 0, commission: 0, entries: [] };
+      payout.soldTotal += sale.total;
+      payout.commission += seller.commission;
+      payout.entries.push({ sale, commission: seller.commission });
+      bySeller.set(key, payout);
+    }
   }
   return [...bySeller.values()].sort((a, b) => b.commission - a.commission);
 }
 
-/** Calcula los indicadores del periodo a partir de las ventas (más recientes primero) y gastos ya filtrados por fecha. */
-export function computeMetrics(sales: readonly Sale[], expenses: readonly Expense[], now = new Date()): DashboardMetrics {
+/**
+ * Calcula los indicadores del periodo a partir de las ventas (más recientes primero) y gastos ya filtrados
+ * por fecha. Las ventas anuladas no cuentan en nada.
+ */
+export function computeMetrics(allSales: readonly Sale[], expenses: readonly Expense[], now = new Date()): DashboardMetrics {
+  const sales = allSales.filter((sale) => sale.status !== 'void');
   const pending = sales.filter((sale) => sale.status === 'pending');
   const salesTotal = sum(sales, (sale) => sale.total);
   const expensesTotal = sum(expenses, (expense) => expense.amount);

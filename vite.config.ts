@@ -18,6 +18,9 @@ export default defineConfig({
       input: {
         login: resolve(src, 'html/login.html'),
         panel: resolve(src, 'html/panel.html'),
+        ventas: resolve(src, 'html/ventas.html'),
+        historial: resolve(src, 'html/historial.html'),
+        recibo: resolve(src, 'html/recibo.html'),
       },
     },
   },

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Recibo · LAB CAR</title>
+    <link rel="icon" type="image/png" href="../assets/images/favicon.png" />
+    <script type="module" src="../ts/pages/recibo.ts"></script>
+  </head>
+  <body>
+    <nav class="toolbar" id="toolbar" hidden>
+      <button type="button" id="btn-print" class="primary">Imprimir tirilla</button>
+      <a id="btn-whatsapp" class="whatsapp" target="_blank" rel="noopener">Enviar por WhatsApp</a>
+      <a href="/html/historial.html">Ir al historial</a>
+      <a href="/html/ventas.html">Nueva venta</a>
+    </nav>
+
+    <p id="receipt-status" class="status" role="status">Cargando recibo…</p>
+
+    <article id="receipt" class="receipt" hidden>
+      <h1 id="r-business"></h1>
+      <p class="center muted" style="margin: 0">
+        <span id="r-tagline"></span><br />
+        <span id="r-owner"></span><br />
+        NIT <span id="r-nit"></span><br />
+        <span id="r-city"></span>
+      </p>
+      <p id="r-void" class="badge-void" hidden>VENTA ANULADA</p>
+      <hr class="rule" />
+      <div class="row"><span>Orden</span><strong id="r-order"></strong></div>
+      <div class="row"><span>Fecha</span><span id="r-date"></span></div>
+      <div class="row"><span>Vehículo</span><span><span id="r-plate" class="plate"></span> <span id="r-type"></span></span></div>
+      <div id="r-line"></div>
+      <hr class="rule" />
+      <ul id="r-items" class="items"></ul>
+      <hr class="rule" />
+      <div class="row"><span>Subtotal</span><span id="r-subtotal"></span></div>
+      <div class="row" id="r-discount-row"><span>Descuentos</span><span id="r-discount"></span></div>
+      <div class="row total"><span>TOTAL</span><span id="r-total"></span></div>
+      <hr class="rule" />
+      <div class="row"><span>Forma de pago</span><span id="r-payment"></span></div>
+      <div class="row" id="r-due-row" hidden><span>Pagar antes de</span><span id="r-due"></span></div>
+      <div class="row"><span>Atendido por</span><span id="r-sellers"></span></div>
+      <div id="r-customer" hidden>
+        <hr class="rule" />
+        <div class="row"><span>Cliente</span><span id="r-customer-name"></span></div>
+        <div class="row"><span>Documento</span><span id="r-customer-doc"></span></div>
+      </div>
+      <div id="r-notes-block" hidden>
+        <hr class="rule" />
+        <strong>Notas</strong>
+        <p id="r-notes" style="margin: 2px 0 0; white-space: pre-wrap"></p>
+      </div>
+      <hr class="rule" />
+      <p id="r-invoice" class="center" style="margin: 0"></p>
+      <p class="center" style="margin: 8px 0 0; font-weight: 700">¡Gracias por confiar en LAB CAR!</p>
+    </article>
+
+    <template id="tpl-receipt-item">
+      <li>
+        <div class="row"><span data-field="name"></span><span data-field="price"></span></div>
+        <div class="row muted" data-field="discount-row"><span data-field="discount-label"></span><span data-field="discount"></span></div>
+      </li>
+    </template>
+  </body>
+</html>

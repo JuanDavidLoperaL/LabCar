@@ -30,3 +30,18 @@ export function dashboardAccess(role: Role): DashboardAccess {
       return 'none';
   }
 }
+
+/** Admin y manager ven el historial de todos; basic solo el suyo. */
+export function canSeeAllSales(role: Role): boolean {
+  return role === 'admin' || role === 'manager';
+}
+
+/** Solo admin y manager pueden anular ventas. */
+export function canVoidSales(role: Role): boolean {
+  return role === 'admin' || role === 'manager';
+}
+
+/** Página de inicio después del login: basic no tiene panel principal, entra directo a ventas. */
+export function homeFor(role: Role): string {
+  return role === 'basic' ? '/html/ventas.html' : '/html/panel.html';
+}

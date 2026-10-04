@@ -1,6 +1,8 @@
 import '../../css/main.css';
+import { DEFAULT_OVERDUE_DAYS } from '../config/business';
 import { fetchExpenses } from '../data/expenses';
-import { fetchSales } from '../data/sales';
+import { fetchSales, fetchSettledCredits } from '../data/sales';
+import { fetchOverdueDays } from '../data/settings';
 import { computeMetrics } from '../features/dashboard/metrics';
 import {
   renderAdminDetails,
@@ -47,6 +49,10 @@ async function main(): Promise<void> {
   // Quitar del DOM (no solo ocultar) lo que este rol no puede ver.
   if (!isFull) document.querySelectorAll('[data-admin-only]').forEach((el) => el.remove());
 
+  // Los días de mora se leen una sola vez por visita (no en cada cambio de periodo).
+  let overdueDays: Promise<number> | null = null;
+  const loadOverdueDays = () => (overdueDays ??= fetchOverdueDays().catch(() => DEFAULT_OVERDUE_DAYS));
+
   // Evita que una respuesta lenta de un filtro anterior pise la del filtro actual.
   let latestRequest = 0;
 
@@ -58,10 +64,16 @@ async function main(): Promise<void> {
     renderPeriodLabels(period, offset, range);
     renderLoading(true);
     try {
-      const [sales, expenses] = await Promise.all([fetchSales(range), fetchExpenses(range)]);
+      // Cobros de cartera y días de mora solo se usan en las tarjetas del administrador.
+      const [sales, expenses, settledCredits, days] = await Promise.all([
+        fetchSales(range),
+        fetchExpenses(range),
+        isFull ? fetchSettledCredits(range) : [],
+        isFull ? loadOverdueDays() : DEFAULT_OVERDUE_DAYS,
+      ]);
       if (requestId !== latestRequest) return;
 
-      const metrics = computeMetrics(sales, expenses, now);
+      const metrics = computeMetrics(sales, expenses, settledCredits, days, now);
       renderSummary(metrics);
       if (isFull) renderAdminDetails(metrics, sales);
     } catch (error) {

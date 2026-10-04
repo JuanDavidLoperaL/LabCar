@@ -4,6 +4,7 @@ import {
   getDoc,
   getDocs,
   limit,
+  onSnapshot,
   orderBy,
   query,
   runTransaction,
@@ -13,8 +14,9 @@ import {
   where,
   type DocumentSnapshot,
   type QueryConstraint,
+  type Unsubscribe,
 } from 'firebase/firestore';
-import { CREDIT_TERM_DAYS, ORDER_PREFIX } from '../config/business';
+import { ORDER_PREFIX } from '../config/business';
 import { computeSaleTotals, type ItemInput, type SellerInput } from '../features/sales/pricing';
 import type { DateRange } from '../lib/dates';
 import { getDb } from '../lib/firebase';
@@ -25,17 +27,19 @@ import {
   PAYMENT_METHODS,
   PERSON_TYPES,
   SALE_STATUSES,
+  SETTLEMENT_METHODS,
   TAX_REGIMES,
   VEHICLE_TYPES,
   type InvoiceRecipient,
   type PaymentMethod,
   type Sale,
   type SaleCustomer,
+  type SalePayment,
+  type SettlementMethod,
   type VehicleType,
 } from '../models/sale';
 import { asDate, asNumber, asOneOf, asRecord, asRecords, asString, type Raw } from './parse';
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 /** Máximo de ventas por consulta del historial. */
 export const HISTORY_LIMIT = 300;
 
@@ -54,6 +58,17 @@ function parseCustomer(raw: Raw | null): SaleCustomer | null {
     address: asString(raw.address),
     city: asString(raw.city),
     taxRegime: typeof raw.taxRegime === 'string' ? asOneOf(raw.taxRegime, TAX_REGIMES, 'not-vat-responsible') : null,
+  };
+}
+
+function parsePayment(raw: Raw | null): SalePayment | null {
+  const at = asDate(raw?.at);
+  if (!raw || !at) return null;
+  const by = asRecord(raw.by);
+  return {
+    at,
+    method: asOneOf(raw.method, SETTLEMENT_METHODS, 'cash'),
+    by: { email: asString(by?.email), name: asString(by?.name) },
   };
 }
 
@@ -95,7 +110,7 @@ export function parseSale(snapshot: DocumentSnapshot): Sale | null {
     paymentMethod: asOneOf(data.paymentMethod, PAYMENT_METHODS, 'cash'),
     // Si el estado no es válido se asume pendiente: es mejor revisarla en cartera que darla por pagada.
     status: asOneOf(data.status, SALE_STATUSES, 'pending'),
-    dueDate: asDate(data.dueDate),
+    payment: parsePayment(asRecord(data.payment)),
     customer: parseCustomer(asRecord(data.customer)),
     invoice: {
       status: asOneOf(invoice?.status, INVOICE_STATUSES, 'not-requested'),
@@ -136,6 +151,34 @@ export async function fetchSales(range: DateRange): Promise<Sale[]> {
 export async function fetchSale(id: string): Promise<Sale | null> {
   const snapshot = await getDoc(doc(salesCollection(), id));
   return snapshot.exists() ? parseSale(snapshot) : null;
+}
+
+/**
+ * Ventas a crédito pagadas dentro del rango (por fecha de pago, no de venta): es la plata
+ * de cartera que entró en ese periodo.
+ */
+export async function fetchSettledCredits(range: DateRange): Promise<Sale[]> {
+  const snapshot = await getDocs(
+    query(
+      salesCollection(),
+      where('payment.at', '>=', Timestamp.fromDate(range.start)),
+      where('payment.at', '<', Timestamp.fromDate(range.end)),
+    ),
+  );
+  return toSales(snapshot.docs);
+}
+
+/**
+ * Cartera en tiempo real: todas las ventas pendientes de pago. Firestore cobra una lectura por
+ * venta al abrir y luego solo las que cambien (si en otro equipo la marcan pagada, desaparece sola).
+ * Solo filtra por estado, así que no necesita índice compuesto; el orden se hace en el navegador.
+ */
+export function watchPendingSales(onChange: (sales: Sale[]) => void, onError: (error: unknown) => void): Unsubscribe {
+  return onSnapshot(
+    query(salesCollection(), where('status', '==', 'pending')),
+    (snapshot) => onChange(toSales(snapshot.docs)),
+    onError,
+  );
 }
 
 export type HistoryQuery =
@@ -224,7 +267,8 @@ export async function createSale(sale: NewSale, requestId: string): Promise<stri
       sellerEmails: totals.sellers.map((seller) => seller.email),
       paymentMethod: sale.paymentMethod,
       status: isCredit ? 'pending' : 'paid',
-      dueDate: isCredit ? Timestamp.fromMillis(Date.now() + CREDIT_TERM_DAYS * DAY_MS) : null,
+      // Se llena al cobrarla desde cartera (markSalePaid).
+      payment: null,
       customer: sale.customer,
       invoice: {
         // "pending" = en cola para Siigo; la integración actualizará number/cufe/pdfUrl/error.
@@ -240,6 +284,29 @@ export async function createSale(sale: NewSale, requestId: string): Promise<stri
       void: null,
     });
     return id;
+  });
+}
+
+/** La venta ya no estaba en cartera (otro equipo la cobró o la anuló mientras tanto). */
+export class SaleNotPendingError extends Error {
+  constructor(readonly status: string) {
+    super('La venta ya no está pendiente de pago.');
+  }
+}
+
+/**
+ * Registra el pago total de una venta a crédito: pasa a "pagada" con la fecha del servidor y sale de cartera.
+ * Solo admin y manager (las reglas lo validan). La transacción evita cobrarla dos veces si dos equipos
+ * le dan "Marcar pagado" al mismo tiempo.
+ */
+export async function markSalePaid(id: string, method: SettlementMethod, by: { email: string; name: string }): Promise<void> {
+  const db = getDb();
+  const ref = doc(salesCollection(), id);
+  await runTransaction(db, async (transaction) => {
+    const current = await transaction.get(ref);
+    const status = asString(current.data()?.status);
+    if (status !== 'pending') throw new SaleNotPendingError(status);
+    transaction.update(ref, { status: 'paid', payment: { at: serverTimestamp(), method, by } });
   });
 }
 

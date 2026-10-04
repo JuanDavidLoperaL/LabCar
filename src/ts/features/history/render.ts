@@ -1,4 +1,4 @@
-import { formatCOP, formatShortDate, formatShortDateTime, pluralize } from '../../lib/format';
+import { formatCOP, formatShortDateTime, pluralize } from '../../lib/format';
 import { finalConsumerLabel } from '../receipt/content';
 import {
   INVOICE_STATUS_LABELS,
@@ -81,6 +81,13 @@ export function renderSummary(sales: readonly Sale[], commissionOf: string | nul
   setText('summary-commission', formatCOP(commission));
 }
 
+/** "Pagado el 10 oct, 3:15 p. m. · Transferencia · registró Juan" o "Pendiente (en cartera)". */
+function creditPaymentLabel(sale: Sale): string {
+  if (!sale.payment) return 'Pendiente (en cartera)';
+  const { at, method, by } = sale.payment;
+  return `Pagado el ${formatShortDateTime(at)} · ${PAYMENT_METHOD_LABELS[method]} · registró ${by.name || by.email}`;
+}
+
 export function renderDetail(sale: Sale): void {
   setText('detail-title', `Venta ${sale.id}`);
   setText('detail-date', formatShortDateTime(sale.date));
@@ -110,8 +117,8 @@ export function renderDetail(sale: Sale): void {
   setText('detail-discount', sale.discount > 0 ? `−${formatCOP(sale.discount)}` : formatCOP(0));
   setText('detail-total', formatCOP(sale.total));
   setText('detail-payment', PAYMENT_METHOD_LABELS[sale.paymentMethod]);
-  byId('detail-due-row').hidden = !(sale.status === 'pending' && sale.dueDate);
-  if (sale.dueDate) setText('detail-due', formatShortDate(sale.dueDate));
+  byId('detail-paid-row').hidden = sale.paymentMethod !== 'credit' || sale.status === 'void';
+  setText('detail-paid', creditPaymentLabel(sale));
   const invoiceExtra = sale.invoice.number ? ` · N.º ${sale.invoice.number}` : sale.invoice.error ? ` · ${sale.invoice.error}` : '';
   setText('detail-invoice', `${INVOICE_STATUS_LABELS[sale.invoice.status]}${invoiceExtra}`);
 

@@ -41,6 +41,16 @@ export function canVoidSales(role: Role): boolean {
   return role === 'admin' || role === 'manager';
 }
 
+/** Cartera (ventas a crédito por cobrar): solo admin y manager. */
+export function canAccessReceivables(role: Role): boolean {
+  return role === 'admin' || role === 'manager';
+}
+
+/** Solo el administrador cambia cuántos días deben pasar para que un crédito quede en mora. */
+export function canEditOverdueDays(role: Role): boolean {
+  return role === 'admin';
+}
+
 /** Página de inicio después del login: basic no tiene panel principal, entra directo a ventas. */
 export function homeFor(role: Role): string {
   return role === 'basic' ? '/html/ventas.html' : '/html/panel.html';

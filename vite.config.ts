@@ -21,6 +21,7 @@ export default defineConfig({
         ventas: resolve(src, 'html/ventas.html'),
         historial: resolve(src, 'html/historial.html'),
         recibo: resolve(src, 'html/recibo.html'),
+        cartera: resolve(src, 'html/cartera.html'),
       },
     },
   },

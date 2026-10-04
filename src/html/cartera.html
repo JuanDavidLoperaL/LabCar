@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="es" class="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cartera · LAB CAR</title>
+    <link rel="icon" type="image/png" href="../assets/images/favicon.png" />
+    <script type="module" src="../ts/pages/cartera.ts"></script>
+  </head>
+  <!-- "invisible" evita mostrar la página antes de validar la sesión -->
+  <body class="invisible bg-surface font-body-md text-body-md text-on-surface antialiased min-h-screen">
+    <main class="relative bg-surface w-full px-gutter-mobile lg:px-gutter pt-space-lg pb-space-xl">
+      <!-- Rol básico: sin acceso -->
+      <section id="no-access" hidden class="flex flex-col items-center justify-center text-center gap-space-sm py-24">
+        <span class="material-symbols-outlined text-[48px] text-outline" aria-hidden="true">lock</span>
+        <h1 class="font-headline-md text-headline-md">Cartera no está disponible para tu rol</h1>
+        <p class="text-on-surface-variant max-w-md">Usa el menú para ir a los módulos habilitados para ti. Si necesitas más acceso, habla con el administrador.</p>
+      </section>
+
+      <!-- Error al cargar -->
+      <section id="load-error" hidden class="flex flex-col items-center justify-center text-center gap-space-sm py-24">
+        <span class="material-symbols-outlined text-[48px] text-tertiary" aria-hidden="true">cloud_off</span>
+        <h1 class="font-headline-md text-headline-md">No se pudo cargar la cartera</h1>
+        <p id="load-error-text" class="text-on-surface-variant max-w-md">Revisa tu conexión a internet e intenta de nuevo.</p>
+        <button id="btn-retry" type="button" class="mt-space-sm px-space-lg py-2.5 rounded-xl bg-primary-container text-on-primary-container font-label-lg text-label-lg">Reintentar</button>
+      </section>
+
+      <div id="receivables" hidden data-loading="true" aria-busy="true" class="flex flex-col gap-space-lg">
+        <!-- Encabezado -->
+        <div class="flex flex-col gap-1">
+          <span class="self-start bg-primary/10 text-primary px-space-xs py-0.5 rounded font-label-sm text-label-sm tracking-wider uppercase">Cobranza</span>
+          <h1 class="font-headline-lg text-headline-lg">Cartera</h1>
+          <p class="text-on-surface-variant">Ventas a crédito pendientes de pago. Al marcarlas como pagadas salen de la lista y cuentan como cobradas hoy.</p>
+        </div>
+
+        <!-- Resumen y días de mora -->
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-space-md">
+          <section aria-label="Resumen de cartera" class="xl:col-span-2 bg-surface-container-low p-space-lg rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-space-md border border-outline-variant/30 shadow-md">
+            <div class="flex items-center gap-space-md">
+              <span class="w-14 h-14 shrink-0 rounded-2xl bg-primary-container/20 border border-primary/20 flex items-center justify-center text-primary">
+                <span class="material-symbols-outlined text-[32px]" aria-hidden="true">account_balance_wallet</span>
+              </span>
+              <div>
+                <p class="font-label-md text-label-md text-outline uppercase tracking-wider">Total en cartera</p>
+                <p class="font-currency-display text-currency-display tracking-tight"><span id="summary-total" data-skeleton>—</span> <span class="font-label-md text-label-md text-outline">COP</span></p>
+              </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-space-sm">
+              <span class="flex items-center gap-2 bg-surface-container px-space-md py-2.5 rounded-xl border border-outline-variant/20">
+                <span class="material-symbols-outlined text-[18px] text-primary" aria-hidden="true">group</span>
+                <span id="summary-count" data-skeleton class="font-label-md text-label-md font-semibold"></span>
+              </span>
+              <span id="summary-overdue" data-skeleton data-overdue="false"
+                class="flex items-center gap-2 px-space-md py-2.5 rounded-xl border font-label-md text-label-md font-semibold bg-surface-container border-outline-variant/20 text-secondary data-[overdue=true]:bg-error-container/20 data-[overdue=true]:border-error/30 data-[overdue=true]:text-error">
+                <span class="material-symbols-outlined text-[18px]" aria-hidden="true">warning</span>
+                <span id="summary-overdue-text"></span>
+              </span>
+            </div>
+          </section>
+
+          <!-- Días para entrar en mora: lo edita el admin; el manager solo lo ve -->
+          <form id="overdue-form" class="bg-surface-container-low p-space-lg rounded-2xl border border-outline-variant/30 shadow-md flex flex-col justify-center gap-space-sm">
+            <label for="overdue-days" class="font-label-md text-label-md text-outline uppercase tracking-wider flex items-center gap-1">
+              <span class="material-symbols-outlined text-[18px]" aria-hidden="true">alarm</span>Alerta de mora
+            </label>
+            <div class="flex items-center gap-space-sm">
+              <div class="flex items-center gap-space-xs">
+                <input id="overdue-days" type="number" inputmode="numeric" min="1" max="365" step="1" required
+                  class="w-20 h-10 px-space-sm bg-surface-container rounded-lg text-center font-headline-md text-headline-md focus:outline-none focus:ring-1 focus:ring-primary read-only:bg-transparent read-only:focus:ring-0" />
+                <span class="text-on-surface-variant">días desde la venta</span>
+              </div>
+              <button id="btn-save-overdue" type="submit" hidden disabled
+                class="ml-auto px-space-md h-10 rounded-lg bg-primary-container text-on-primary-container font-label-md text-label-md font-semibold disabled:opacity-50">Guardar</button>
+            </div>
+            <p id="overdue-help" class="font-body-sm text-body-sm text-outline"></p>
+          </form>
+        </div>
+
+        <!-- Búsqueda, filtros y orden -->
+        <section aria-label="Buscar en cartera" class="bg-surface-container-low p-space-md rounded-xl flex flex-col lg:flex-row gap-space-md items-stretch lg:items-center justify-between shadow-sm">
+          <div class="relative flex-1 min-w-0">
+            <label for="search" class="sr-only">Buscar cliente</label>
+            <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-outline text-[20px] pointer-events-none" aria-hidden="true">search</span>
+            <input id="search" type="search" autocomplete="off" placeholder="Buscar por cédula/NIT, nombre o teléfono"
+              class="w-full h-11 bg-surface-container pl-10 pr-4 rounded-xl placeholder:text-outline/70 focus:outline-none focus:ring-1 focus:ring-primary" />
+          </div>
+          <div class="flex items-center gap-1.5 overflow-x-auto">
+            <div id="aging-filter" role="group" aria-label="Filtrar por mora" class="flex items-center gap-1.5">
+              <button type="button" data-aging="all" aria-pressed="true" class="px-3 py-1.5 rounded-full font-label-sm text-label-sm whitespace-nowrap bg-surface-container text-on-surface-variant hover:text-on-surface aria-pressed:bg-primary-container aria-pressed:text-on-primary-container">Todos (<span data-count>0</span>)</button>
+              <button type="button" data-aging="overdue" aria-pressed="false" class="px-3 py-1.5 rounded-full font-label-sm text-label-sm whitespace-nowrap bg-surface-container text-on-surface-variant hover:text-on-surface aria-pressed:bg-error-container aria-pressed:text-on-error-container">En mora (<span data-count>0</span>)</button>
+              <button type="button" data-aging="current" aria-pressed="false" class="px-3 py-1.5 rounded-full font-label-sm text-label-sm whitespace-nowrap bg-surface-container text-on-surface-variant hover:text-on-surface aria-pressed:bg-primary-container aria-pressed:text-on-primary-container">Al día (<span data-count>0</span>)</button>
+            </div>
+            <span class="h-6 w-px bg-surface-container-highest mx-1" aria-hidden="true"></span>
+            <label for="sort" class="sr-only">Ordenar</label>
+            <select id="sort" class="bg-surface-container text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm h-8 px-2.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer">
+              <option value="oldest">Más días de mora</option>
+              <option value="amount">Mayor saldo</option>
+              <option value="name">Cliente A–Z</option>
+              <option value="newest">Más reciente</option>
+            </select>
+          </div>
+        </section>
+
+        <!-- Listado -->
+        <section data-dim-while-loading aria-labelledby="list-title" class="flex flex-col gap-space-md">
+          <div class="flex items-center gap-2 px-space-xs">
+            <h2 id="list-title" class="font-headline-md text-headline-md font-bold">Cuentas por cobrar</h2>
+            <span id="list-count" class="bg-surface-container-high text-primary font-label-sm text-label-sm px-2.5 py-0.5 rounded-full"></span>
+          </div>
+          <ul id="receivable-list" class="flex flex-col gap-space-sm"></ul>
+          <div id="list-empty" hidden class="flex flex-col items-center text-center gap-space-xs py-space-xl bg-surface-container-low rounded-2xl">
+            <span class="material-symbols-outlined text-[40px] text-outline" aria-hidden="true">task_alt</span>
+            <p id="list-empty-text" class="text-on-surface-variant"></p>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- Recordatorio de cobro por WhatsApp -->
+    <dialog id="reminder-dialog" aria-labelledby="reminder-title"
+      class="m-auto w-[min(600px,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] rounded-2xl bg-surface-container-low text-on-surface p-0 shadow-2xl backdrop:bg-black/70 backdrop:backdrop-blur-sm">
+      <form id="reminder-form" method="dialog" class="flex flex-col">
+        <div class="flex items-start justify-between gap-space-sm p-space-md sm:p-space-lg border-b border-outline-variant/30">
+          <div>
+            <h2 id="reminder-title" class="font-headline-md text-headline-md font-bold">Recordatorio de cobro</h2>
+            <p id="reminder-recipient" class="font-body-sm text-body-sm text-outline"></p>
+          </div>
+          <button type="button" data-close-dialog aria-label="Cerrar" class="p-1.5 rounded-lg text-outline hover:text-on-surface hover:bg-surface-container-high flex">
+            <span class="material-symbols-outlined" aria-hidden="true">close</span>
+          </button>
+        </div>
+        <div class="p-space-md sm:p-space-lg flex flex-col gap-space-sm">
+          <p class="flex items-start gap-space-xs p-space-sm rounded-lg bg-surface-container font-body-sm text-body-sm text-on-surface-variant">
+            <span class="material-symbols-outlined text-[18px] text-secondary" aria-hidden="true">info</span>
+            <span>Se enviará desde el WhatsApp abierto en este equipo. Debe ser el de LAB CAR: <strong id="reminder-sender" class="text-on-surface"></strong>.</span>
+          </p>
+          <p id="reminder-placeholder-account" hidden class="flex items-start gap-space-xs p-space-sm rounded-lg bg-yellow-400/10 text-yellow-200 font-body-sm text-body-sm">
+            <span class="material-symbols-outlined text-[18px]" aria-hidden="true">warning</span>
+            <span>La cuenta bancaria del mensaje es de ejemplo. Cámbiala por la real antes de enviarlo.</span>
+          </p>
+          <label for="reminder-message" class="font-label-md text-label-md">Mensaje (puedes ajustarlo antes de enviar)</label>
+          <textarea id="reminder-message" rows="14" maxlength="2000"
+            class="w-full p-space-sm bg-surface-container-lowest rounded-lg focus:outline-none focus:ring-1 focus:ring-primary resize-y font-body-md text-body-md"></textarea>
+          <p id="reminder-no-phone" hidden class="font-body-sm text-body-sm text-error">Esta venta no tiene un celular válido del cliente. Copia el mensaje y envíalo por otro medio.</p>
+        </div>
+        <div class="flex flex-wrap justify-end gap-space-xs p-space-md sm:p-space-lg border-t border-outline-variant/30">
+          <button id="btn-reminder-reset" type="button" class="mr-auto px-space-md py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md flex items-center gap-1">
+            <span class="material-symbols-outlined text-[18px]" aria-hidden="true">restart_alt</span>Restaurar
+          </button>
+          <button id="btn-reminder-copy" type="button" class="px-space-md py-2 rounded-lg bg-surface-container-high hover:bg-surface-bright font-label-md text-label-md font-semibold flex items-center gap-1">
+            <span class="material-symbols-outlined text-[18px]" aria-hidden="true">content_copy</span><span data-label>Copiar</span>
+          </button>
+          <button id="btn-reminder-send" type="submit" class="px-space-md py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-label-md text-label-md font-semibold flex items-center gap-1 disabled:opacity-50">
+            <span class="material-symbols-outlined text-[18px]" aria-hidden="true">chat</span>Abrir WhatsApp
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- Confirmar pago -->
+    <dialog id="payment-dialog" aria-labelledby="payment-title"
+      class="m-auto w-[min(480px,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] rounded-2xl bg-surface-container-low text-on-surface p-0 shadow-2xl backdrop:bg-black/70 backdrop:backdrop-blur-sm">
+      <form id="payment-form" class="flex flex-col">
+        <div class="flex items-start justify-between gap-space-sm p-space-md sm:p-space-lg border-b border-outline-variant/30">
+          <div>
+            <h2 id="payment-title" class="font-headline-md text-headline-md font-bold">Marcar como pagado</h2>
+            <p id="payment-order" class="font-body-sm text-body-sm text-outline"></p>
+          </div>
+          <button type="button" data-close-dialog aria-label="Cerrar" class="p-1.5 rounded-lg text-outline hover:text-on-surface hover:bg-surface-container-high flex">
+            <span class="material-symbols-outlined" aria-hidden="true">close</span>
+          </button>
+        </div>
+        <div class="p-space-md sm:p-space-lg flex flex-col gap-space-md">
+          <dl class="bg-surface-container p-space-md rounded-xl space-y-1">
+            <div class="flex justify-between gap-space-sm"><dt class="text-outline">Cliente</dt><dd id="payment-customer" class="text-right"></dd></div>
+            <div class="flex justify-between gap-space-sm"><dt class="text-outline">Vehículo</dt><dd id="payment-vehicle" class="text-right"></dd></div>
+            <div class="flex justify-between gap-space-sm"><dt class="text-outline">Vendedor</dt><dd id="payment-sellers" class="text-right"></dd></div>
+            <div class="flex justify-between gap-space-sm font-bold text-headline-md pt-1"><dt>Total a pagar</dt><dd id="payment-total" class="text-primary"></dd></div>
+          </dl>
+          <fieldset class="flex flex-col gap-space-xs">
+            <legend class="font-label-md text-label-md mb-space-xs">¿Cómo pagó? *</legend>
+            <div class="grid grid-cols-2 gap-space-sm">
+              <label class="flex items-center gap-space-sm p-space-sm rounded-xl bg-surface-container border border-outline-variant/30 cursor-pointer has-checked:border-primary has-checked:bg-primary-container/15">
+                <input type="radio" name="payment-method" value="cash" required class="accent-primary-container" />
+                <span class="material-symbols-outlined text-[20px] text-secondary" aria-hidden="true">payments</span>Efectivo
+              </label>
+              <label class="flex items-center gap-space-sm p-space-sm rounded-xl bg-surface-container border border-outline-variant/30 cursor-pointer has-checked:border-primary has-checked:bg-primary-container/15">
+                <input type="radio" name="payment-method" value="transfer" required class="accent-primary-container" />
+                <span class="material-symbols-outlined text-[20px] text-secondary" aria-hidden="true">account_balance</span>Transferencia
+              </label>
+            </div>
+          </fieldset>
+          <p class="font-body-sm text-body-sm text-on-surface-variant">Se registra el pago total con la fecha de hoy. La venta sale de cartera y suma en "Cobrado" del día; los vendedores y la comisión no cambian.</p>
+          <p id="payment-error" hidden class="font-body-sm text-body-sm text-error"></p>
+        </div>
+        <div class="flex justify-end gap-space-xs p-space-md sm:p-space-lg border-t border-outline-variant/30">
+          <button type="button" data-close-dialog class="px-space-md py-2 rounded-lg bg-surface-container-high hover:bg-surface-bright font-label-md text-label-md">Cancelar</button>
+          <button id="btn-payment-confirm" type="submit" class="px-space-md py-2 rounded-lg bg-primary-container text-on-primary-container font-label-md text-label-md font-semibold flex items-center gap-1 disabled:opacity-60">
+            <span class="material-symbols-outlined text-[18px]" aria-hidden="true">check_circle</span>Confirmar pago
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <template id="tpl-receivable">
+      <li data-overdue="false"
+        class="bg-surface-container-low hover:bg-surface-container p-space-md rounded-2xl border border-outline-variant/30 data-[overdue=true]:border-error/40 transition-colors shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-space-md">
+        <div class="flex items-start gap-space-md flex-1 min-w-0">
+          <span data-field="initials" aria-hidden="true"
+            class="w-12 h-12 rounded-xl bg-surface-container-high text-primary flex items-center justify-center font-bold text-[18px] shrink-0 [[data-overdue=true]_&]:bg-error-container/30 [[data-overdue=true]_&]:text-error"></span>
+          <div class="flex flex-col gap-1 min-w-0 flex-1">
+            <div class="flex items-center gap-2 flex-wrap">
+              <h3 data-field="name" class="font-headline-md text-[18px] font-bold"></h3>
+              <span data-field="document" class="bg-surface-container-lowest text-outline font-label-sm text-label-sm px-2 py-0.5 rounded"></span>
+              <span data-field="city" class="text-outline font-body-sm text-body-sm"></span>
+            </div>
+            <div class="flex items-center gap-2 flex-wrap font-body-sm text-body-sm text-on-surface-variant">
+              <span data-field="plate" class="bg-yellow-300 text-black font-extrabold px-2 py-0.5 rounded font-mono text-[11px] tracking-wider uppercase"></span>
+              <span data-field="vehicle-line" class="font-medium text-on-surface"></span>
+              <span class="text-outline" aria-hidden="true">•</span>
+              <span data-field="services" class="text-secondary"></span>
+            </div>
+            <div class="flex items-center gap-x-3 gap-y-1 flex-wrap font-body-sm text-body-sm text-outline">
+              <a data-field="order" class="font-mono text-primary hover:underline" title="Ver la venta en el historial"></a>
+              <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[15px]" aria-hidden="true">calendar_today</span><span data-field="date"></span></span>
+              <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[15px]" aria-hidden="true">person</span>Vendedor: <span data-field="sellers" class="text-on-surface-variant"></span></span>
+              <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[15px]" aria-hidden="true">call</span><span data-field="phone"></span></span>
+            </div>
+          </div>
+        </div>
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between lg:justify-end gap-space-md border-t lg:border-t-0 pt-3 lg:pt-0 border-outline-variant/20">
+          <div class="flex flex-col lg:text-right">
+            <span data-field="balance-label" class="font-label-sm text-label-sm text-outline uppercase tracking-wider [[data-overdue=true]_&]:text-error"></span>
+            <span class="font-currency-display text-[22px] font-bold tracking-tight text-primary [[data-overdue=true]_&]:text-error"><span data-field="total"></span> <span class="text-xs text-outline font-normal">COP</span></span>
+            <span data-field="aging" class="font-label-sm text-label-sm text-emerald-400 flex items-center gap-1 lg:justify-end [[data-overdue=true]_&]:text-error"></span>
+          </div>
+          <div class="flex flex-col gap-2 sm:min-w-[200px]">
+            <button type="button" data-action="remind"
+              class="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-space-md py-2.5 rounded-xl font-label-md text-label-md font-bold transition-colors whitespace-nowrap">
+              <span class="material-symbols-outlined text-[20px]" aria-hidden="true">chat</span>Cobrar por WhatsApp
+            </button>
+            <button type="button" data-action="pay"
+              class="flex items-center justify-center gap-1.5 bg-surface-container-high hover:bg-surface-container-highest border border-outline-variant/30 hover:border-primary/40 px-space-md py-2 rounded-xl font-label-md text-label-md font-semibold transition-colors whitespace-nowrap">
+              <span class="material-symbols-outlined text-[18px] text-primary" aria-hidden="true">check_circle</span>Marcar pagado
+            </button>
+          </div>
+        </div>
+      </li>
+    </template>
+  </body>
+</html>

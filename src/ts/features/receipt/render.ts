@@ -44,8 +44,12 @@ export function renderReceipt(sale: Sale): void {
   setText('r-discount', `−${formatCOP(sale.discount)}`);
   setText('r-total', formatCOP(sale.total));
   setText('r-payment', PAYMENT_METHOD_LABELS[sale.paymentMethod]);
-  byId('r-due-row').hidden = !(sale.status === 'pending' && sale.dueDate);
-  if (sale.dueDate) setText('r-due', formatShortDate(sale.dueDate));
+  // Crédito: si ya se pagó, cuándo y cómo; si no, queda claro que está pendiente.
+  byId('r-credit-row').hidden = sale.paymentMethod !== 'credit' || sale.status === 'void';
+  setText(
+    'r-credit',
+    sale.payment ? `Pagado ${formatShortDate(sale.payment.at)} (${PAYMENT_METHOD_LABELS[sale.payment.method]})` : 'Pendiente de pago',
+  );
   setText('r-sellers', sellersSummary(sale));
 
   const finalConsumer = finalConsumerLabel(sale);

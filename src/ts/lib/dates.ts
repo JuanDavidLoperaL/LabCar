@@ -81,6 +81,15 @@ export function periodRange(period: Period, offset = 0, now = new Date()): DateR
   }
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Días calendario (hora de Colombia) entre dos fechas: de una venta de ayer a las 11 p. m. a hoy → 1. */
+export function bogotaDaysBetween(from: Date, to: Date): number {
+  const a = toBogotaDay(from);
+  const b = toBogotaDay(to);
+  return Math.round((Date.UTC(b.year, b.month, b.day) - Date.UTC(a.year, a.month, a.day)) / DAY_MS);
+}
+
 /** Fecha en hora de Colombia como "AAAA-MM-DD" (valor de un <input type="date">). */
 export function toDateInputValue(date: Date): string {
   const { year, month, day } = toBogotaDay(date);

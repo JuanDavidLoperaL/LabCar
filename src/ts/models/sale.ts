@@ -15,6 +15,10 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   credit: 'Crédito',
 };
 
+/** Cómo pagó el cliente una venta a crédito al salir de cartera (no hay abonos: siempre el total). */
+export const SETTLEMENT_METHODS = ['cash', 'transfer'] as const;
+export type SettlementMethod = (typeof SETTLEMENT_METHODS)[number];
+
 /** paid = pagada · pending = a crédito, en cartera · void = anulada (no cuenta en ningún total). */
 export const SALE_STATUSES = ['paid', 'pending', 'void'] as const;
 export type SaleStatus = (typeof SALE_STATUSES)[number];
@@ -100,6 +104,17 @@ export interface SaleInvoice {
   error: string | null;
 }
 
+/**
+ * Pago de una venta a crédito. La venta conserva su fecha, vendedores y comisión;
+ * `at` es el día en que entró el dinero (cuenta como "Cobrado" ese día en el panel).
+ */
+export interface SalePayment {
+  at: Date;
+  method: SettlementMethod;
+  /** Admin o manager que registró el pago (no es el vendedor). */
+  by: { email: string; name: string };
+}
+
 /** Documento de la colección `sales` (ID = número de orden, ej. "LC-1049"). */
 export interface Sale {
   id: string;
@@ -120,8 +135,8 @@ export interface Sale {
   sellers: SaleSeller[];
   paymentMethod: PaymentMethod;
   status: SaleStatus;
-  /** Fecha límite de pago (ventas a crédito). */
-  dueDate: Date | null;
+  /** Solo ventas a crédito ya pagadas; null mientras estén en cartera o si no fueron a crédito. */
+  payment: SalePayment | null;
   customer: SaleCustomer | null;
   invoice: SaleInvoice;
   notes: string;

@@ -12,7 +12,10 @@ import { connect } from './admin.ts';
 const WEEKS_BACK = 6;
 const BATCH_LIMIT = 450;
 const COMMISSION_RATE = 0.4;
-const CREDIT_TERM_DAYS = 15;
+/** Los créditos con más de estos días tienen probabilidad de ya estar pagados (el resto queda en cartera, algunos en mora). */
+const CREDIT_SETTLE_AFTER_DAYS = 7;
+/** Celular de todos los clientes de prueba: los recordatorios de cobro por WhatsApp llegan aquí. */
+const TEST_CUSTOMER_PHONE = '3016529257';
 const BOGOTA_OFFSET_MS = 5 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -165,9 +168,11 @@ function buildSale(date: Date, now: Date, number: number): MockDoc {
 
   const paymentMethod = pickWeighted(PAYMENT_METHODS).value;
   const isCredit = paymentMethod === 'credit';
-  const dueDate = isCredit ? new Date(date.getTime() + CREDIT_TERM_DAYS * DAY_MS) : null;
-  // Los créditos viejos en su mayoría ya se pagaron; los recientes siguen en cartera.
-  const status = isCredit && !(dueDate! < now && random() < 0.6) ? 'pending' : 'paid';
+  // Parte de los créditos viejos ya se pagaron (con fecha de pago posterior); los demás siguen en cartera.
+  const ageDays = Math.floor((now.getTime() - date.getTime()) / DAY_MS);
+  const settled = isCredit && ageDays > CREDIT_SETTLE_AFTER_DAYS && random() < 0.5;
+  const status = isCredit && !settled ? 'pending' : 'paid';
+  const paidAt = settled ? new Date(Math.min(now.getTime(), date.getTime() + between(1, ageDays) * DAY_MS)) : null;
   const wantsInvoice = random() < 0.25;
   const customerNumber = between(1, 9);
   const customer =
@@ -178,7 +183,7 @@ function buildSale(date: Date, now: Date, number: number): MockDoc {
           verificationDigit: null,
           personType: 'natural',
           name: `Cliente Prueba ${customerNumber}`,
-          phone: `300000000${customerNumber}`,
+          phone: TEST_CUSTOMER_PHONE,
           email: wantsInvoice ? `cliente${customerNumber}@mock.labcar.local` : '',
           address: wantsInvoice ? 'Dirección de prueba' : '',
           city: wantsInvoice ? 'Medellín, Antioquia' : '',
@@ -204,7 +209,9 @@ function buildSale(date: Date, now: Date, number: number): MockDoc {
       sellerEmails: sellers.map((seller) => seller.email),
       paymentMethod,
       status,
-      dueDate: dueDate ? Timestamp.fromDate(dueDate) : null,
+      payment: paidAt
+        ? { at: Timestamp.fromDate(paidAt), method: pick(['cash', 'transfer']), by: { email: 'admin@mock.labcar.local', name: 'Administrador (prueba)' } }
+        : null,
       customer,
       invoice: {
         status: wantsInvoice ? 'pending' : 'not-requested',

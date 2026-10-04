@@ -92,7 +92,7 @@ service cloud.firestore {
       let rate = get(/databases/$(database)/documents/settings/commissions).data.rate;
       return d.keys().hasOnly(['number', 'requestId', 'date', 'vehicleType', 'plate', 'vehicleLine', 'items',
           'subtotal', 'discount', 'total', 'commissionRate', 'commission', 'sellers', 'sellerEmails',
-          'paymentMethod', 'status', 'dueDate', 'customer', 'invoice', 'notes', 'createdBy', 'void'])
+          'paymentMethod', 'status', 'payment', 'customer', 'invoice', 'notes', 'createdBy', 'void'])
         // Consecutivo: es el valor que deja el contador en la misma transacción.
         && d.number is int
         && d.number == getAfter(counterPath()).data.value
@@ -114,9 +114,10 @@ service cloud.firestore {
         && d.total * rate - d.commission <= 0.5
         && isValidSellers(d)
         && d.paymentMethod in ['cash', 'transfer', 'credit']
-        && ((d.paymentMethod == 'credit' && d.status == 'pending' && d.customer != null
-            && d.dueDate is timestamp && d.dueDate > request.time)
-          || (d.paymentMethod != 'credit' && d.status == 'paid' && d.dueDate == null))
+        && ((d.paymentMethod == 'credit' && d.status == 'pending' && d.customer != null)
+          || (d.paymentMethod != 'credit' && d.status == 'paid'))
+        // El pago de un crédito solo se registra después, desde cartera (isValidSettlement).
+        && d.payment == null
         && isValidInvoice(d.invoice)
         && d.notes is string && d.notes.size() <= 250
         && d.createdBy.keys().hasOnly(['email', 'name'])
@@ -136,6 +137,31 @@ service cloud.firestore {
         && d.void.reason is string && d.void.reason.size() >= 5 && d.void.reason.size() <= 200;
     }
 
+    // Pago total de una venta a crédito desde cartera (no hay abonos): pasa de pending → paid
+    // y registra cuándo (hora del servidor), cómo y quién lo registró. Nada más de la venta cambia.
+    function isValidSettlement() {
+      let d = request.resource.data;
+      return resource.data.status == 'pending'
+        && resource.data.paymentMethod == 'credit'
+        && d.diff(resource.data).affectedKeys().hasOnly(['status', 'payment'])
+        && d.status == 'paid'
+        && d.payment.keys().hasOnly(['at', 'method', 'by'])
+        && d.payment.at == request.time
+        && d.payment.method in ['cash', 'transfer']
+        && d.payment.by.keys().hasOnly(['email', 'name'])
+        && d.payment.by.email == sessionEmail()
+        && d.payment.by.name is string && d.payment.by.name.size() <= 100;
+    }
+
+    // Días para que un crédito entre en mora (lo cambia solo el administrador desde Cartera).
+    function isValidReceivablesSettings() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['overdueDays', 'updatedAt', 'updatedBy'])
+        && d.overdueDays is int && d.overdueDays >= 1 && d.overdueDays <= 365
+        && d.updatedAt == request.time
+        && d.updatedBy == sessionEmail();
+    }
+
     // ---------- Usuarios ----------
     // ID = correo en minúsculas (usuarios sin correo: usuario@usuarios.labcar.local).
     // Todo el equipo puede ver la lista: son los vendedores que se eligen en cada venta.
@@ -145,7 +171,7 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // ---------- Catálogo y configuración (los editará el módulo de administración) ----------
+    // ---------- Catálogo y configuración (los demás los editará el módulo de administración) ----------
     match /services/{serviceId} {
       allow read: if isMember();
       allow write: if false;
@@ -153,7 +179,8 @@ service cloud.firestore {
 
     match /settings/{settingId} {
       allow read: if isMember();
-      allow write: if false;
+      allow create, update: if settingId == 'receivables' && hasRole(['admin']) && isValidReceivablesSettings();
+      allow delete: if false;
     }
 
     // ---------- Consecutivo de ventas ----------
@@ -193,7 +220,7 @@ service cloud.firestore {
       allow list: if hasRole(['admin', 'manager'])
         || (hasRole(['basic']) && sessionEmail() in resource.data.sellerEmails);
       allow create: if isMember() && isValidNewSale(saleId);
-      allow update: if hasRole(['admin', 'manager']) && isValidVoid();
+      allow update: if hasRole(['admin', 'manager']) && (isValidVoid() || isValidSettlement());
       allow delete: if false;
     }
 

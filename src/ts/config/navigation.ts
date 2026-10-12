@@ -18,7 +18,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { id: 'ventas', label: 'Nueva Venta', icon: 'point_of_sale', href: '/html/ventas.html', roles: ['admin', 'manager', 'basic'] },
   { id: 'historial', label: 'Historial', icon: 'history', href: '/html/historial.html', roles: ['admin', 'manager', 'basic'] },
   { id: 'cartera', label: 'Cartera', icon: 'account_balance_wallet', href: '/html/cartera.html', roles: ['admin', 'manager'] },
-  { id: 'gastos', label: 'Gastos', icon: 'payments', href: null, roles: ['admin', 'manager'] },
+  { id: 'gastos', label: 'Gastos', icon: 'receipt_long', href: '/html/gastos.html', roles: ['admin', 'manager'] },
   {
     id: 'pagos-vendedores',
     label: 'Pagos Vendedores',

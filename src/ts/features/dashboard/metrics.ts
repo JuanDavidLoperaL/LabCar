@@ -24,7 +24,7 @@ export interface DashboardMetrics {
    * periodo (aunque la venta sea de antes). fromReceivables es la parte que vino de cartera.
    */
   sales: { total: number; collected: number; fromReceivables: number; count: number; cars: number; motorcycles: number };
-  expenses: { total: number; topCategories: string[] };
+  expenses: { total: number; count: number };
   receivables: { total: number; count: number; overdue: number };
   commissions: { total: number; payouts: SellerPayout[] };
   /** Plata real: lo cobrado − gastos − comisiones. No incluye cartera (ventas por cobrar). */
@@ -33,17 +33,6 @@ export interface DashboardMetrics {
 
 function sum<T>(items: readonly T[], value: (item: T) => number): number {
   return items.reduce((total, item) => total + value(item), 0);
-}
-
-function topExpenseCategories(expenses: readonly Expense[], limit: number): string[] {
-  const byCategory = new Map<string, number>();
-  for (const expense of expenses) {
-    byCategory.set(expense.category, (byCategory.get(expense.category) ?? 0) + expense.amount);
-  }
-  return [...byCategory.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, limit)
-    .map(([category]) => category);
 }
 
 /** Una venta con varios vendedores suma en cada uno solo su parte de la comisión. */
@@ -65,17 +54,18 @@ function sellerPayouts(sales: readonly Sale[]): SellerPayout[] {
 /**
  * Calcula los indicadores del periodo a partir de las ventas (más recientes primero) y gastos ya filtrados
  * por fecha, y de los créditos cobrados en el periodo (filtrados por fecha de pago).
- * Las ventas anuladas no cuentan en nada. Una venta a crédito suma en "Ventas" y comisiones el día que se
+ * Las ventas y gastos anulados no cuentan en nada. Una venta a crédito suma en "Ventas" y comisiones el día que se
  * hizo, y en "Cobrado" el día que se pagó: así nunca se cuenta dos veces.
  */
 export function computeMetrics(
   allSales: readonly Sale[],
-  expenses: readonly Expense[],
+  allExpenses: readonly Expense[],
   settledCredits: readonly Sale[],
   overdueDays: number,
   now = new Date(),
 ): DashboardMetrics {
   const sales = allSales.filter((sale) => sale.status !== 'void');
+  const expenses = allExpenses.filter((expense) => expense.void === null);
   const pending = sales.filter((sale) => sale.status === 'pending');
   const salesTotal = sum(sales, (sale) => sale.total);
   const expensesTotal = sum(expenses, (expense) => expense.amount);
@@ -101,7 +91,7 @@ export function computeMetrics(
       cars: sales.filter((sale) => sale.vehicleType === 'car').length,
       motorcycles: sales.filter((sale) => sale.vehicleType === 'motorcycle').length,
     },
-    expenses: { total: expensesTotal, topCategories: topExpenseCategories(expenses, 3) },
+    expenses: { total: expensesTotal, count: expenses.length },
     receivables: {
       total: sum(pending, (sale) => sale.total),
       count: pending.length,

@@ -22,6 +22,7 @@ export default defineConfig({
         historial: resolve(src, 'html/historial.html'),
         recibo: resolve(src, 'html/recibo.html'),
         cartera: resolve(src, 'html/cartera.html'),
+        pagosVendedores: resolve(src, 'html/pagos-vendedores.html'),
       },
     },
   },

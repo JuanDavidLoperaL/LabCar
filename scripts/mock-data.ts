@@ -23,10 +23,10 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** Empleados de prueba: aparecen como vendedores y en el filtro del historial. */
 const SELLERS = [
-  { email: 'carlos.mendoza@mock.labcar.local', name: 'Carlos Mendoza (prueba)' },
-  { email: 'andres.parra@mock.labcar.local', name: 'Andrés Parra (prueba)' },
-  { email: 'camilo.rodriguez@mock.labcar.local', name: 'Camilo Rodríguez (prueba)' },
-  { email: 'david.granados@mock.labcar.local', name: 'David Granados (prueba)' },
+  { email: 'carlos.mendoza@mock.labcar.local', name: 'Carlos Mendoza (prueba)', documentNumber: '1017234988', phone: '3001234501' },
+  { email: 'andres.parra@mock.labcar.local', name: 'Andrés Parra (prueba)', documentNumber: '1036782901', phone: '3001234502' },
+  { email: 'camilo.rodriguez@mock.labcar.local', name: 'Camilo Rodríguez (prueba)', documentNumber: '71654320', phone: '3001234503' },
+  { email: 'david.granados@mock.labcar.local', name: 'David Granados (prueba)', documentNumber: '1152448190', phone: '3001234504' },
 ] as const;
 
 type VehicleType = 'car' | 'motorcycle';
@@ -266,6 +266,11 @@ function buildUsers(): MockDoc[] {
   return SELLERS.map((seller) => ({ id: seller.email, data: { name: seller.name, role: 'basic', active: true, mock: true } }));
 }
 
+/** Cédula y teléfono de los empleados de prueba (Pagos Vendedores). */
+function buildEmployees(): MockDoc[] {
+  return SELLERS.map((seller) => ({ id: seller.email, data: { documentNumber: seller.documentNumber, phone: seller.phone, mock: true } }));
+}
+
 // ---------- Firestore ----------
 
 async function clearMock(db: Firestore, collection: string): Promise<number> {
@@ -313,7 +318,7 @@ async function main(): Promise<void> {
   }
 
   const db = connect();
-  const removed = await Promise.all(['sales', 'expenses', 'users'].map((collection) => clearMock(db, collection)));
+  const removed = await Promise.all(['sales', 'expenses', 'users', 'employees'].map((collection) => clearMock(db, collection)));
   console.log(`Borrados: ${removed[0]} ventas, ${removed[1]} gastos y ${removed[2]} empleados de prueba.`);
   if (command === 'clear') return;
 
@@ -321,6 +326,7 @@ async function main(): Promise<void> {
   const expenses = buildExpenses(now);
   const users = buildUsers();
   await insert(db, 'users', users);
+  await insert(db, 'employees', buildEmployees());
   await insert(db, 'sales', sales);
   await insert(db, 'expenses', expenses);
   console.log(`Creados: ${users.length} empleados, ${sales.length} ventas y ${expenses.length} gastos de prueba (${WEEKS_BACK} semanas, lunes a sábado).`);

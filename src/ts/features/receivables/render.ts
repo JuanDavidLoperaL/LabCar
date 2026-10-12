@@ -11,6 +11,13 @@ import type { AgingFilter, Receivable, ReceivablesSummary, ReceivablesView } fro
 export interface CardActions {
   onRemind: (sale: Sale) => void;
   onPay: (sale: Sale) => void;
+  /** Selección para cobrar varias deudas del mismo cliente en un solo mensaje. */
+  selection: {
+    isSelected: (sale: Sale) => boolean;
+    /** Motivo por el que no se puede marcar (sin documento, otro cliente) o null si se puede. */
+    blockedReason: (sale: Sale) => string | null;
+    onToggle: (sale: Sale, selected: boolean) => void;
+  };
 }
 
 /** "CC 1017234988" · "NIT 900823114-1" */
@@ -43,6 +50,15 @@ function renderCard({ sale, aging }: Receivable, actions: CardActions): HTMLLIEl
   const order = field<HTMLAnchorElement>(card, 'order');
   order.textContent = sale.id;
   order.href = `/html/historial.html?venta=${encodeURIComponent(sale.id)}`;
+
+  const selected = actions.selection.isSelected(sale);
+  const blocked = selected ? null : actions.selection.blockedReason(sale);
+  const checkbox = card.querySelector<HTMLInputElement>('[data-action="select"]')!;
+  card.dataset.selected = String(selected);
+  checkbox.checked = selected;
+  checkbox.disabled = blocked !== null;
+  field(card, 'select-label').title = blocked ?? 'Seleccionar para cobrar junto con otras deudas de este cliente';
+  checkbox.addEventListener('change', () => actions.selection.onToggle(sale, checkbox.checked));
 
   card.querySelector('[data-action="remind"]')?.addEventListener('click', () => actions.onRemind(sale));
   card.querySelector('[data-action="pay"]')?.addEventListener('click', () => actions.onPay(sale));

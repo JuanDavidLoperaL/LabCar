@@ -116,6 +116,28 @@
       </div>
     </main>
 
+    <!-- Barra de selección: cobrar varias deudas del mismo cliente en un solo mensaje -->
+    <div id="selection-bar" hidden
+      class="fixed left-0 lg:left-64 right-0 bottom-16 lg:bottom-0 z-30 bg-surface-container-lowest/95 backdrop-blur-xl border-t border-emerald-500/40 shadow-[0_-2px_10px_rgba(0,0,0,0.5)] px-gutter-mobile lg:px-gutter py-space-sm">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm">
+        <div class="min-w-0">
+          <p class="font-label-md text-label-md font-bold truncate"><span id="selection-count"></span> · <span id="selection-customer"></span></p>
+          <p class="font-body-sm text-body-sm text-outline">Total: <strong id="selection-total" class="text-primary"></strong> · desde el <span id="selection-oldest"></span></p>
+        </div>
+        <div class="flex flex-wrap items-center gap-space-xs">
+          <button id="btn-select-all" type="button" class="px-space-md py-2 rounded-lg bg-surface-container-high hover:bg-surface-bright font-label-md text-label-md font-semibold flex items-center gap-1">
+            <span class="material-symbols-outlined text-[18px]" aria-hidden="true">select_all</span><span id="select-all-label"></span>
+          </button>
+          <button id="btn-clear-selection" type="button" class="px-space-md py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md flex items-center gap-1">
+            <span class="material-symbols-outlined text-[18px]" aria-hidden="true">close</span>Quitar selección
+          </button>
+          <button id="btn-remind-selected" type="button" class="px-space-md py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-label-md text-label-md font-bold flex items-center gap-1">
+            <span class="material-symbols-outlined text-[18px]" aria-hidden="true">chat</span>Cobrar por WhatsApp
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Recordatorio de cobro por WhatsApp -->
     <dialog id="reminder-dialog" aria-labelledby="reminder-title"
       class="m-auto w-[min(600px,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] rounded-2xl bg-surface-container-low text-on-surface p-0 shadow-2xl backdrop:bg-black/70 backdrop:backdrop-blur-sm">
@@ -141,7 +163,7 @@
           <label for="reminder-message" class="font-label-md text-label-md">Mensaje (puedes ajustarlo antes de enviar)</label>
           <textarea id="reminder-message" rows="14" maxlength="2000"
             class="w-full p-space-sm bg-surface-container-lowest rounded-lg focus:outline-none focus:ring-1 focus:ring-primary resize-y font-body-md text-body-md"></textarea>
-          <p id="reminder-no-phone" hidden class="font-body-sm text-body-sm text-error">Esta venta no tiene un celular válido del cliente. Copia el mensaje y envíalo por otro medio.</p>
+          <p id="reminder-no-phone" hidden class="font-body-sm text-body-sm text-error">El cliente no tiene un celular válido registrado. Copia el mensaje y envíalo por otro medio.</p>
         </div>
         <div class="flex flex-wrap justify-end gap-space-xs p-space-md sm:p-space-lg border-t border-outline-variant/30">
           <button id="btn-reminder-reset" type="button" class="mr-auto px-space-md py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md flex items-center gap-1">
@@ -203,9 +225,14 @@
     </dialog>
 
     <template id="tpl-receivable">
-      <li data-overdue="false"
-        class="bg-surface-container-low hover:bg-surface-container p-space-md rounded-2xl border border-outline-variant/30 data-[overdue=true]:border-error/40 transition-colors shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-space-md">
+      <li data-overdue="false" data-selected="false"
+        class="bg-surface-container-low hover:bg-surface-container p-space-md rounded-2xl border border-outline-variant/30 data-[overdue=true]:border-error/40 data-[selected=true]:border-emerald-500/70 data-[selected=true]:bg-emerald-500/5 transition-colors shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-space-md">
         <div class="flex items-start gap-space-md flex-1 min-w-0">
+          <!-- Varias deudas del mismo cliente se cobran en un solo mensaje -->
+          <label data-field="select-label" class="self-center p-1 -m-1 cursor-pointer has-disabled:cursor-not-allowed">
+            <span class="sr-only">Seleccionar para cobrar junto con otras del mismo cliente</span>
+            <input type="checkbox" data-action="select" class="w-5 h-5 accent-emerald-600 cursor-pointer disabled:cursor-not-allowed disabled:opacity-30" />
+          </label>
           <span data-field="initials" aria-hidden="true"
             class="w-12 h-12 rounded-xl bg-surface-container-high text-primary flex items-center justify-center font-bold text-[18px] shrink-0 [[data-overdue=true]_&]:bg-error-container/30 [[data-overdue=true]_&]:text-error"></span>
           <div class="flex flex-col gap-1 min-w-0 flex-1">

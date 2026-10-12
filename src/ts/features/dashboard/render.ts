@@ -82,7 +82,7 @@ export function renderSummary(metrics: DashboardMetrics): void {
   setText('kpi-expenses-value', formatCOP(expenses.total));
   setText(
     'kpi-expenses-detail',
-    expenses.topCategories.length > 0 ? expenses.topCategories.join(', ') : 'Sin gastos registrados',
+    expenses.count > 0 ? pluralize(expenses.count, 'gasto registrado', 'gastos registrados') : 'Sin gastos registrados',
   );
 }
 

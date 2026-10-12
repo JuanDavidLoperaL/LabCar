@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="es" class="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gastos · LAB CAR</title>
+    <link rel="icon" type="image/png" href="../assets/images/favicon.png" />
+    <script type="module" src="../ts/pages/gastos.ts"></script>
+  </head>
+  <!-- "invisible" evita mostrar la página antes de validar la sesión -->
+  <body class="invisible bg-surface font-body-md text-body-md text-on-surface antialiased min-h-screen">
+    <main class="relative bg-surface w-full px-gutter-mobile lg:px-gutter pt-space-lg pb-space-xl">
+      <!-- Rol básico: sin acceso -->
+      <section id="no-access" hidden class="flex flex-col items-center justify-center text-center gap-space-sm py-24">
+        <span class="material-symbols-outlined text-[48px] text-outline" aria-hidden="true">lock</span>
+        <h1 class="font-headline-md text-headline-md">Gastos no está disponible para tu rol</h1>
+        <p class="text-on-surface-variant max-w-md">Usa el menú para ir a los módulos habilitados para ti. Si necesitas más acceso, habla con el administrador.</p>
+      </section>
+
+      <!-- Error al cargar -->
+      <section id="load-error" hidden class="flex flex-col items-center justify-center text-center gap-space-sm py-24">
+        <span class="material-symbols-outlined text-[48px] text-tertiary" aria-hidden="true">cloud_off</span>
+        <h1 class="font-headline-md text-headline-md">No se pudieron cargar los gastos</h1>
+        <p id="load-error-text" class="text-on-surface-variant max-w-md">Revisa tu conexión a internet e intenta de nuevo.</p>
+        <button id="btn-retry" type="button" class="mt-space-sm px-space-lg py-2.5 rounded-xl bg-primary-container text-on-primary-container font-label-lg text-label-lg">Reintentar</button>
+      </section>
+
+      <!-- Los elementos con data-admin-only se quitan del DOM para el manager -->
+      <div id="expenses" hidden class="max-w-5xl mx-auto flex flex-col gap-space-lg">
+        <!-- Encabezado -->
+        <div class="flex flex-col gap-1">
+          <span class="self-start bg-primary/10 text-primary px-space-xs py-0.5 rounded font-label-sm text-label-sm tracking-wider uppercase">Egresos</span>
+          <h1 class="font-headline-lg text-headline-lg">Gastos</h1>
+          <p id="page-subtitle" class="text-on-surface-variant"></p>
+        </div>
+
+        <!-- Registrar gasto -->
+        <section aria-labelledby="form-title" class="bg-surface-container rounded-xl p-space-md sm:p-space-lg shadow-lg border border-surface-container-high/60">
+          <div class="flex items-center gap-space-xs mb-space-md">
+            <span class="p-1.5 rounded-lg bg-primary-container text-on-primary-container flex items-center justify-center">
+              <span class="material-symbols-outlined text-[18px]" aria-hidden="true">receipt_long</span>
+            </span>
+            <h2 id="form-title" class="font-headline-md text-headline-md">Registrar gasto</h2>
+          </div>
+          <form id="expense-form" novalidate class="flex flex-col gap-space-md">
+            <div class="grid grid-cols-1 md:grid-cols-[12rem_1fr_14rem] gap-space-md items-start">
+              <div class="flex flex-col gap-1.5">
+                <label for="expense-date" class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Fecha</label>
+                <div class="relative flex items-center">
+                  <span class="material-symbols-outlined absolute left-3.5 text-outline text-[18px] pointer-events-none" aria-hidden="true">calendar_today</span>
+                  <input id="expense-date" type="date" required aria-describedby="expense-date-help expense-date-error"
+                    class="w-full h-12 bg-surface-container-low pl-10 pr-space-md rounded-lg border border-outline-variant/40 focus:outline-none focus:ring-1 focus:ring-primary aria-invalid:border-error read-only:text-on-surface-variant" />
+                </div>
+                <p id="expense-date-help" class="font-body-sm text-body-sm text-outline"></p>
+                <p id="expense-date-error" hidden class="font-body-sm text-body-sm text-error"></p>
+              </div>
+              <div class="flex flex-col gap-1.5 min-w-0">
+                <div class="flex items-center justify-between gap-space-sm">
+                  <label for="expense-description" class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Descripción</label>
+                  <span id="expense-description-count" class="font-body-sm text-body-sm text-outline" aria-hidden="true"></span>
+                </div>
+                <input id="expense-description" type="text" required autocomplete="off" aria-describedby="expense-description-error"
+                  placeholder="Ej. Microfibras y shampoo pH neutro"
+                  class="w-full h-12 bg-surface-container-low px-space-md rounded-lg border border-outline-variant/40 placeholder:text-outline focus:outline-none focus:ring-1 focus:ring-primary aria-invalid:border-error" />
+                <p id="expense-description-error" hidden class="font-body-sm text-body-sm text-error"></p>
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <label for="expense-amount" class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Valor</label>
+                <div class="relative flex items-center">
+                  <span class="absolute left-3.5 font-label-lg text-label-lg text-outline pointer-events-none" aria-hidden="true">$</span>
+                  <input id="expense-amount" type="text" inputmode="numeric" required autocomplete="off" placeholder="0" aria-describedby="expense-amount-error"
+                    class="w-full h-12 bg-surface-container-low pl-8 pr-12 rounded-lg border border-outline-variant/40 font-body-lg text-body-lg font-semibold placeholder:text-outline focus:outline-none focus:ring-1 focus:ring-primary aria-invalid:border-error" />
+                  <span class="absolute right-3.5 font-label-sm text-label-sm text-outline pointer-events-none" aria-hidden="true">COP</span>
+                </div>
+                <p id="expense-amount-error" hidden class="font-body-sm text-body-sm text-error"></p>
+              </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-md">
+              <fieldset class="flex flex-wrap items-center gap-space-sm">
+                <legend class="sr-only">¿Cómo se pagó?</legend>
+                <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mr-space-xs" aria-hidden="true">Pagado con</span>
+                <label class="flex items-center gap-space-xs px-space-md py-2 rounded-lg bg-surface-container-low border border-outline-variant/40 cursor-pointer has-checked:border-primary has-checked:bg-primary-container/15">
+                  <input type="radio" name="expense-method" value="cash" checked class="accent-primary-container" />
+                  <span class="material-symbols-outlined text-[18px] text-secondary" aria-hidden="true">payments</span>Efectivo
+                </label>
+                <label class="flex items-center gap-space-xs px-space-md py-2 rounded-lg bg-surface-container-low border border-outline-variant/40 cursor-pointer has-checked:border-primary has-checked:bg-primary-container/15">
+                  <input type="radio" name="expense-method" value="transfer" class="accent-primary-container" />
+                  <span class="material-symbols-outlined text-[18px] text-secondary" aria-hidden="true">account_balance</span>Transferencia
+                </label>
+              </fieldset>
+              <button id="btn-save-expense" type="submit"
+                class="h-12 px-space-lg rounded-lg bg-primary-container hover:bg-secondary-container text-on-primary-container font-label-lg text-label-lg flex items-center justify-center gap-space-xs transition-colors shadow-md disabled:opacity-60">
+                <span class="material-symbols-outlined text-[20px]" aria-hidden="true">check</span>Guardar gasto
+              </button>
+            </div>
+            <p id="expense-form-error" hidden role="alert" class="font-body-sm text-body-sm text-error"></p>
+          </form>
+        </section>
+
+        <!-- Historial -->
+        <section id="history" data-loading="true" aria-busy="true" aria-labelledby="history-title"
+          class="bg-surface-container rounded-xl shadow-lg border border-surface-container-high/60 overflow-hidden flex flex-col">
+          <div class="p-space-md sm:p-space-lg border-b border-surface-container-high/60 flex flex-col lg:flex-row lg:items-center justify-between gap-space-md">
+            <div class="flex flex-col gap-space-sm">
+              <div>
+                <h2 id="history-title" class="font-headline-md text-headline-md">Gastos de <span id="history-period"></span></h2>
+                <p id="history-range" class="font-body-sm text-body-sm text-on-surface-variant"></p>
+              </div>
+              <!-- Periodo: solo admin (el manager ve solo hoy) -->
+              <div data-admin-only class="flex flex-wrap items-center gap-space-sm">
+                <div id="period-filter" role="group" aria-label="Periodo" class="inline-flex p-1 rounded-lg bg-surface-container-low">
+                  <button type="button" data-period="day" aria-pressed="true" class="px-3.5 py-1.5 rounded-md font-label-md text-label-md text-on-surface-variant hover:text-on-surface aria-pressed:bg-primary-container aria-pressed:text-on-primary-container transition-colors">Día</button>
+                  <button type="button" data-period="week" aria-pressed="false" class="px-3.5 py-1.5 rounded-md font-label-md text-label-md text-on-surface-variant hover:text-on-surface aria-pressed:bg-primary-container aria-pressed:text-on-primary-container transition-colors">Semana</button>
+                  <button type="button" data-period="month" aria-pressed="false" class="px-3.5 py-1.5 rounded-md font-label-md text-label-md text-on-surface-variant hover:text-on-surface aria-pressed:bg-primary-container aria-pressed:text-on-primary-container transition-colors">Mes</button>
+                </div>
+                <div class="flex items-center bg-surface-container-low rounded-lg">
+                  <button id="btn-period-prev" type="button" aria-label="Periodo anterior" title="Periodo anterior"
+                    class="p-1.5 rounded-l-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors flex items-center">
+                    <span class="material-symbols-outlined text-[20px]" aria-hidden="true">chevron_left</span>
+                  </button>
+                  <button id="btn-period-next" type="button" aria-label="Periodo siguiente" title="Periodo siguiente" disabled
+                    class="p-1.5 rounded-r-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high disabled:opacity-30 disabled:pointer-events-none transition-colors flex items-center">
+                    <span class="material-symbols-outlined text-[20px]" aria-hidden="true">chevron_right</span>
+                  </button>
+                </div>
+                <button id="btn-period-current" type="button" hidden class="flex items-center gap-1 font-label-md text-label-md text-primary hover:underline">
+                  <span class="material-symbols-outlined text-[16px]" aria-hidden="true">today</span>Actual
+                </button>
+              </div>
+            </div>
+
+            <!-- Total del periodo (sin anulados) -->
+            <div class="flex items-center gap-space-md bg-surface-container-low px-space-md py-2.5 rounded-lg border border-outline-variant/30 justify-between lg:justify-start">
+              <div class="flex flex-col">
+                <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Total del periodo</span>
+                <span class="font-headline-lg text-headline-lg text-tertiary font-bold tracking-tight"><span id="summary-total" data-skeleton>—</span> <span class="font-label-sm text-label-sm text-outline font-normal">COP</span></span>
+                <span class="font-body-sm text-body-sm text-outline">Efectivo <span id="summary-cash" data-skeleton></span> · Transferencia <span id="summary-transfer" data-skeleton></span></span>
+              </div>
+              <span class="p-2 rounded-lg bg-tertiary-container/20 text-tertiary flex">
+                <span class="material-symbols-outlined text-[22px]" aria-hidden="true">payments</span>
+              </span>
+            </div>
+          </div>
+
+          <ul id="expense-list" data-dim-while-loading class="divide-y divide-surface-container-high/60"></ul>
+          <div id="expense-empty" hidden class="flex flex-col items-center text-center gap-space-xs py-space-xl">
+            <span class="material-symbols-outlined text-[40px] text-outline" aria-hidden="true">receipt_long</span>
+            <p id="expense-empty-text" class="text-on-surface-variant"></p>
+          </div>
+
+          <p class="p-space-md bg-surface-container-low font-body-sm text-body-sm text-on-surface-variant">
+            <span id="list-count" data-skeleton></span>
+          </p>
+        </section>
+      </div>
+    </main>
+
+    <!-- Anular gasto -->
+    <dialog id="void-dialog" aria-labelledby="void-title"
+      class="m-auto w-[min(480px,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] rounded-2xl bg-surface-container-low text-on-surface p-0 shadow-2xl backdrop:bg-black/70 backdrop:backdrop-blur-sm">
+      <form id="void-form" class="flex flex-col">
+        <div class="flex items-start justify-between gap-space-sm p-space-md sm:p-space-lg border-b border-outline-variant/30">
+          <div class="min-w-0">
+            <h2 id="void-title" class="font-headline-md text-headline-md font-bold">Anular gasto</h2>
+            <p id="void-description" class="font-body-sm text-body-sm text-on-surface-variant truncate"></p>
+            <p id="void-detail" class="font-body-sm text-body-sm text-outline"></p>
+          </div>
+          <button type="button" data-close-dialog aria-label="Cerrar" class="p-1.5 rounded-lg text-outline hover:text-on-surface hover:bg-surface-container-high flex">
+            <span class="material-symbols-outlined" aria-hidden="true">close</span>
+          </button>
+        </div>
+        <div class="p-space-md sm:p-space-lg flex flex-col gap-space-sm">
+          <label for="void-reason" class="font-label-md text-label-md">Motivo de la anulación *</label>
+          <textarea id="void-reason" rows="3" required placeholder="Ej. Se registró dos veces"
+            class="w-full p-space-sm bg-surface-container-lowest rounded-lg focus:outline-none focus:ring-1 focus:ring-primary resize-y"></textarea>
+          <p class="font-body-sm text-body-sm text-on-surface-variant">El gasto no se borra: queda tachado, con el motivo y quién lo anuló, y deja de sumar en los totales.</p>
+          <p id="void-error" hidden class="font-body-sm text-body-sm text-error"></p>
+        </div>
+        <div class="flex justify-end gap-space-xs p-space-md sm:p-space-lg border-t border-outline-variant/30">
+          <button type="button" data-close-dialog class="px-space-md py-2 rounded-lg bg-surface-container-high hover:bg-surface-bright font-label-md text-label-md">Cancelar</button>
+          <button id="btn-void-confirm" type="submit" class="px-space-md py-2 rounded-lg bg-error-container text-on-error-container font-label-md text-label-md font-semibold flex items-center gap-1 disabled:opacity-60">
+            <span class="material-symbols-outlined text-[18px]" aria-hidden="true">block</span>Anular gasto
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <template id="tpl-expense">
+      <li data-void="false" class="group p-space-md sm:px-space-lg flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm sm:gap-space-md hover:bg-surface-container-high/40 transition-colors">
+        <div class="flex items-start gap-space-md min-w-0">
+          <span data-field="icon" aria-hidden="true"
+            class="material-symbols-outlined text-[18px] w-9 h-9 shrink-0 rounded-full bg-surface-container-high flex items-center justify-center text-primary group-data-[void=true]:text-outline"></span>
+          <div class="flex flex-col min-w-0">
+            <span data-field="description" class="font-body-lg text-body-lg font-medium break-words group-data-[void=true]:line-through group-data-[void=true]:text-outline"></span>
+            <span class="font-label-sm text-label-sm text-outline flex flex-wrap gap-x-1.5">
+              <span data-field="date"></span><span aria-hidden="true">·</span><span data-field="method"></span><span aria-hidden="true">·</span><span>Registró <span data-field="created-by"></span></span>
+            </span>
+            <span data-field="void-info" hidden class="font-label-sm text-label-sm text-error mt-0.5"></span>
+          </div>
+        </div>
+        <!-- En celular el monto va debajo, alineado con el texto (ícono 2.25rem + separación 1rem) -->
+        <div class="flex items-center justify-between sm:justify-end gap-space-md pl-13 sm:pl-0 shrink-0">
+          <span class="text-right whitespace-nowrap">
+            <span data-field="amount" class="font-headline-md text-headline-md text-tertiary font-bold tracking-tight group-data-[void=true]:line-through group-data-[void=true]:text-outline"></span>
+            <span class="font-label-sm text-label-sm text-outline ml-1">COP</span>
+          </span>
+          <button type="button" data-field="void" title="Anular gasto"
+            class="flex items-center gap-1 px-space-sm py-1 rounded-lg text-outline hover:text-error hover:bg-error-container/20 font-label-sm text-label-sm transition-colors">
+            <span class="material-symbols-outlined text-[16px]" aria-hidden="true">block</span>Anular
+          </button>
+        </div>
+      </li>
+    </template>
+  </body>
+</html>

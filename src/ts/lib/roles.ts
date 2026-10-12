@@ -51,6 +51,24 @@ export function canEditOverdueDays(role: Role): boolean {
   return role === 'admin';
 }
 
+/** Gastos: admin y manager registran; basic no tiene acceso. */
+export function canAccessExpenses(role: Role): boolean {
+  return role === 'admin' || role === 'manager';
+}
+
+/**
+ * Solo el administrador ve el historial de gastos (semanas y meses anteriores) y registra gastos con
+ * fecha pasada. El manager solo ve y registra los de hoy.
+ */
+export function canSeeExpenseHistory(role: Role): boolean {
+  return role === 'admin';
+}
+
+/** El admin anula cualquier gasto; el manager solo los de hoy (las reglas lo validan). */
+export function canVoidExpense(role: Role, isFromToday: boolean): boolean {
+  return role === 'admin' || (role === 'manager' && isFromToday);
+}
+
 /** Pagos a vendedores: admin y manager eligen a cualquier empleado; basic solo ve lo suyo. */
 export function canSeeAllPayouts(role: Role): boolean {
   return role === 'admin' || role === 'manager';

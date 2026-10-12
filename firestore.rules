@@ -200,6 +200,38 @@ service cloud.firestore {
         && d.deferredBy.name is string && d.deferredBy.name.size() <= 100;
     }
 
+    // Gasto nuevo: de hoy (hora del servidor) o, solo el admin, un día pasado de hasta 60 días
+    // (se guarda al mediodía de ese día; se dan 61 por la diferencia de horas).
+    function isValidNewExpense() {
+      let d = request.resource.data;
+      let todayMidnight = (request.time - duration.value(5, 'h')).date() + duration.value(5, 'h');
+      return d.keys().hasOnly(['date', 'description', 'amount', 'paymentMethod', 'createdAt', 'createdBy', 'void'])
+        && (d.date == request.time
+          || (hasRole(['admin']) && d.date is timestamp
+            && d.date < todayMidnight && d.date > request.time - duration.value(61, 'd')))
+        && d.description is string && d.description.size() >= 3 && d.description.size() <= 200
+        && d.amount is int && d.amount >= 1 && d.amount <= 50000000
+        && d.paymentMethod in ['cash', 'transfer']
+        && d.createdAt == request.time
+        && d.createdBy.keys().hasOnly(['email', 'name'])
+        && d.createdBy.email == sessionEmail()
+        && d.createdBy.name is string && d.createdBy.name.size() <= 100
+        && d.void == null;
+    }
+
+    // Anulación de un gasto: solo agrega quién, cuándo y por qué (los gastos de prueba no traen el campo void).
+    function isValidExpenseVoid() {
+      let d = request.resource.data;
+      return resource.data.get('void', null) == null
+        && d.diff(resource.data).affectedKeys().hasOnly(['void'])
+        && d.void.keys().hasOnly(['at', 'by', 'reason'])
+        && d.void.at == request.time
+        && d.void.by.keys().hasOnly(['email', 'name'])
+        && d.void.by.email == sessionEmail()
+        && d.void.by.name is string && d.void.by.name.size() <= 100
+        && d.void.reason is string && d.void.reason.size() >= 5 && d.void.reason.size() <= 200;
+    }
+
     // ---------- Usuarios ----------
     // ID = correo en minúsculas (usuarios sin correo: usuario@usuarios.labcar.local).
     // Todo el equipo puede ver la lista: son los vendedores que se eligen en cada venta.
@@ -289,11 +321,18 @@ service cloud.firestore {
     }
 
     // ---------- Gastos ----------
-    // Escritura bloqueada hasta construir el módulo de Gastos.
+    // Admin ve todos; manager solo los de hoy. Ambos registran (el manager solo con fecha de hoy) y
+    // anulan (el manager solo los de hoy). Nunca se borran. get admite documentos inexistentes para
+    // que la transacción de createExpense compruebe si el intento ya se guardó.
     match /expenses/{expenseId} {
-      allow read: if hasRole(['admin'])
+      allow get: if hasRole(['admin'])
+        || (hasRole(['manager']) && (resource == null || isToday(resource.data.date)));
+      allow list: if hasRole(['admin'])
         || (hasRole(['manager']) && isToday(resource.data.date));
-      allow write: if false;
+      allow create: if hasRole(['admin', 'manager']) && isValidNewExpense();
+      allow update: if (hasRole(['admin']) || (hasRole(['manager']) && isToday(resource.data.date)))
+        && isValidExpenseVoid();
+      allow delete: if false;
     }
   }
 }

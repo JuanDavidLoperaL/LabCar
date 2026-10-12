@@ -112,6 +112,17 @@ export function toDateInputValue(date: Date): string {
   return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
+/** Mediodía en Bogotá del día "AAAA-MM-DD" (fecha de un registro hecho para un día pasado); null si es inválida. */
+export function bogotaNoonFromDateInput(value: string): Date | null {
+  const range = rangeFromDateInputs(value, value);
+  return range ? new Date(range.start.getTime() + 12 * HOUR_MS) : null;
+}
+
+/** "AAAA-MM-DD" de `days` días antes de `date` (hora de Colombia). */
+export function dateInputDaysBefore(date: Date, days: number): string {
+  return toDateInputValue(new Date(date.getTime() - days * DAY_MS));
+}
+
 /** Rango de días completos entre dos "AAAA-MM-DD" (ambos incluidos). null si alguna fecha es inválida o están invertidas. */
 export function rangeFromDateInputs(from: string, to: string): DateRange | null {
   const parse = (value: string) => {

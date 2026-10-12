@@ -246,7 +246,19 @@ function buildExpenses(now: Date): MockDoc[] {
   const expenses: MockDoc[] = [];
   const add = (date: Date, category: string, description: string, amount: number) => {
     if (date <= now) {
-      expenses.push({ id: `PRUEBA-G${expenses.length + 1}`, data: { date: Timestamp.fromDate(date), category, description, amount, mock: true } });
+      expenses.push({
+        id: `PRUEBA-G${expenses.length + 1}`,
+        data: {
+          date: Timestamp.fromDate(date),
+          description: `${category}: ${description}`,
+          amount,
+          paymentMethod: random() < 0.6 ? 'cash' : 'transfer',
+          createdAt: Timestamp.fromDate(date),
+          createdBy: { email: SELLERS[0].email, name: SELLERS[0].name },
+          void: null,
+          mock: true,
+        },
+      });
     }
   };
 

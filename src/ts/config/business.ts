@@ -30,6 +30,17 @@ export const DEFAULT_OVERDUE_DAYS = 30;
 export const MIN_OVERDUE_DAYS = 1;
 export const MAX_OVERDUE_DAYS = 365;
 
+/** Límites de un gasto: evitan errores de digitación (un cero de más) y descripciones vacías. */
+export const EXPENSE_LIMITS = {
+  descriptionMin: 3,
+  descriptionMax: 200,
+  amountMax: 50_000_000,
+  /** Días hacia atrás que el administrador puede usar como fecha del gasto (el manager solo hoy). */
+  backdateDays: 60,
+  voidReasonMin: 5,
+  voidReasonMax: 200,
+} as const;
+
 /**
  * WhatsApp de LAB CAR para cobrar. El enlace de WhatsApp no puede elegir el número que envía:
  * sale desde la cuenta abierta en el equipo, por eso se le recuerda a quien cobra cuál debe ser.

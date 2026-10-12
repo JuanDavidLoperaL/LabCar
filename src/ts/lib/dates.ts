@@ -82,6 +82,22 @@ export function periodRange(period: Period, offset = 0, now = new Date()): DateR
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
+
+/**
+ * Semana de 7 días que termina en un corte fijo (ej. sábado 7:00 p. m.). `offset` 0 es la semana en
+ * curso (termina en el próximo corte, sin incluirlo), -1 la anterior, etc.
+ */
+export function weekEndingAtCutoff(cutoff: { weekday: number; hour: number }, offset = 0, now = new Date()): DateRange {
+  const { year, month, day, weekday } = toBogotaDay(now);
+  let cutDay = day + ((cutoff.weekday - weekday + 7) % 7);
+  if (bogotaMidnight(year, month, cutDay).getTime() + cutoff.hour * HOUR_MS <= now.getTime()) cutDay += 7;
+  cutDay += 7 * offset;
+  return {
+    start: new Date(bogotaMidnight(year, month, cutDay - 7).getTime() + cutoff.hour * HOUR_MS),
+    end: new Date(bogotaMidnight(year, month, cutDay).getTime() + cutoff.hour * HOUR_MS),
+  };
+}
 
 /** Días calendario (hora de Colombia) entre dos fechas: de una venta de ayer a las 11 p. m. a hoy → 1. */
 export function bogotaDaysBetween(from: Date, to: Date): number {

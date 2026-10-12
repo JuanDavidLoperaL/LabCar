@@ -22,6 +22,15 @@ const shortDateTimeFormatter = new Intl.DateTimeFormat('es-CO', {
   minute: '2-digit',
 });
 
+const weekdayDateTimeFormatter = new Intl.DateTimeFormat('es-CO', {
+  timeZone: BOGOTA_TIME_ZONE,
+  weekday: 'short',
+  day: 'numeric',
+  month: 'short',
+  hour: 'numeric',
+  minute: '2-digit',
+});
+
 const shortDateFormatter = new Intl.DateTimeFormat('es-CO', {
   timeZone: BOGOTA_TIME_ZONE,
   day: 'numeric',
@@ -48,6 +57,11 @@ export function formatLongDate(date: Date): string {
 /** 24 oct, 3:15 p. m. */
 export function formatShortDateTime(date: Date): string {
   return shortDateTimeFormatter.format(date);
+}
+
+/** sáb, 17 de oct, 7:00 p. m. */
+export function formatWeekdayDateTime(date: Date): string {
+  return weekdayDateTimeFormatter.format(date);
 }
 
 const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];

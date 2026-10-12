@@ -181,6 +181,14 @@ export function watchPendingSales(onChange: (sales: Sale[]) => void, onError: (e
   );
 }
 
+/** Ventas de un empleado en el rango (más recientes primero), para liquidar sus comisiones. Usa el índice sellerEmails + date. */
+export async function fetchSalesBySeller(email: string, range: DateRange): Promise<Sale[]> {
+  const snapshot = await getDocs(
+    query(salesCollection(), where('sellerEmails', 'array-contains', email), ...dateConstraints(range)),
+  );
+  return toSales(snapshot.docs);
+}
+
 export type HistoryQuery =
   | { kind: 'range'; range: DateRange; sellerEmail: string | null }
   | { kind: 'plate'; plate: string }

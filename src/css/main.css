@@ -180,3 +180,14 @@
     }
   }
 }
+
+/* ---- Impresión de páginas con hoja propia ([data-print-sheet], ej. liquidación de comisiones) ----
+   Al imprimir solo sale la hoja: el menú, el encabezado y el contenido de pantalla se ocultan. */
+@media print {
+  body:has(> [data-print-sheet]) {
+    background: white;
+  }
+  body:has(> [data-print-sheet]) > :not([data-print-sheet]) {
+    display: none !important;
+  }
+}

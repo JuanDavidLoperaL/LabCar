@@ -13,6 +13,18 @@ export const ORDER_PREFIX = 'LC-';
 /** Comisión por defecto mientras el administrador no la configure (settings/commissions). */
 export const DEFAULT_COMMISSION_RATE = 0.4;
 
+/**
+ * Corte semanal de comisiones: sábado a las 7:00 p. m. (hora de Colombia). Una venta del sábado a las
+ * 7:30 p. m. entra en la semana siguiente. weekday: 0 = domingo … 6 = sábado.
+ */
+export const PAYOUT_CUTOFF = { weekday: 6, hour: 19 } as const;
+
+/**
+ * Inicio del control de pagos a vendedores (corte del sábado 10 oct 2026, 7:00 p. m.). Las comisiones
+ * anteriores se liquidaron por fuera del sistema: no se suman como saldo pendiente.
+ */
+export const PAYOUT_TRACKING_START = new Date('2026-10-10T19:00:00-05:00');
+
 /** Días desde la venta a partir de los cuales un crédito está en mora, mientras el administrador no lo cambie (settings/receivables). */
 export const DEFAULT_OVERDUE_DAYS = 30;
 export const MIN_OVERDUE_DAYS = 1;

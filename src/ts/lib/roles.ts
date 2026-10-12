@@ -51,6 +51,21 @@ export function canEditOverdueDays(role: Role): boolean {
   return role === 'admin';
 }
 
+/** Pagos a vendedores: admin y manager eligen a cualquier empleado; basic solo ve lo suyo. */
+export function canSeeAllPayouts(role: Role): boolean {
+  return role === 'admin' || role === 'manager';
+}
+
+/** Solo el administrador ve cuánto vendió cada empleado y la parte que le queda a LAB CAR. */
+export function canSeeCompanyShare(role: Role): boolean {
+  return role === 'admin';
+}
+
+/** Solo el administrador registra que se le pagó la comisión a un empleado. */
+export function canMarkPayoutPaid(role: Role): boolean {
+  return role === 'admin';
+}
+
 /** Página de inicio después del login: basic no tiene panel principal, entra directo a ventas. */
 export function homeFor(role: Role): string {
   return role === 'basic' ? '/html/ventas.html' : '/html/panel.html';

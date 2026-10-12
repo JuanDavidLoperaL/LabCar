@@ -6,3 +6,13 @@ export interface AppUser {
   name: string;
   role: Role;
 }
+
+/**
+ * Datos de contacto del empleado (colección employees/, ID = correo). Van aparte de users/ porque
+ * users/ lo lee todo el equipo; estos solo los ven admin, manager y el propio empleado.
+ */
+export interface EmployeeInfo {
+  /** Cédula; vacío si no está registrada. */
+  documentNumber: string;
+  phone: string;
+}

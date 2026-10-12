@@ -23,6 +23,14 @@
         { "fieldPath": "customer.documentNumber", "order": "ASCENDING" },
         { "fieldPath": "date", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "commissionPayouts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "sellerEmail", "order": "ASCENDING" },
+        { "fieldPath": "coveredTo", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

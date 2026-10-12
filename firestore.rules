@@ -232,6 +232,10 @@ service cloud.firestore {
         && d.void.reason is string && d.void.reason.size() >= 5 && d.void.reason.size() <= 200;
     }
 
+    function isValidServiceName(name) {
+      return name is string && name.size() >= 2 && name.size() <= 60;
+    }
+
     // ---------- Usuarios ----------
     // ID = correo en minúsculas (usuarios sin correo: usuario@usuarios.labcar.local).
     // Todo el equipo puede ver la lista: son los vendedores que se eligen en cada venta.
@@ -250,10 +254,20 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // ---------- Catálogo y configuración (los demás los editará el módulo de administración) ----------
+    // ---------- Catálogo y configuración ----------
+    // Catálogo de servicios: solo el admin lo cambia desde Servicios. Se borran de verdad (las ventas
+    // guardan el nombre). El máximo de 5 accesos rápidos lo controla la app.
     match /services/{serviceId} {
       allow read: if isMember();
-      allow write: if false;
+      allow create: if hasRole(['admin'])
+        && request.resource.data.keys().hasOnly(['name', 'quick'])
+        && isValidServiceName(request.resource.data.name)
+        && request.resource.data.quick == false;
+      allow update: if hasRole(['admin'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'quick'])
+        && isValidServiceName(request.resource.data.name)
+        && request.resource.data.quick is bool;
+      allow delete: if hasRole(['admin']);
     }
 
     match /settings/{settingId} {

@@ -2,8 +2,6 @@
 export interface Service {
   id: string;
   name: string;
-  /** Aparece como acceso rápido en la venta. */
+  /** Aparece como acceso rápido en la venta (máximo SERVICE_LIMITS.quickMax). */
   quick: boolean;
-  /** Orden de aparición (menor primero). */
-  order: number;
 }

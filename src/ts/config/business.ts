@@ -30,6 +30,13 @@ export const DEFAULT_OVERDUE_DAYS = 30;
 export const MIN_OVERDUE_DAYS = 1;
 export const MAX_OVERDUE_DAYS = 365;
 
+/** Catálogo de servicios: largo del nombre y cuántos pueden ser accesos rápidos en Nueva Venta. */
+export const SERVICE_LIMITS = {
+  nameMin: 2,
+  nameMax: 60,
+  quickMax: 5,
+} as const;
+
 /** Límites de un gasto: evitan errores de digitación (un cero de más) y descripciones vacías. */
 export const EXPENSE_LIMITS = {
   descriptionMin: 3,

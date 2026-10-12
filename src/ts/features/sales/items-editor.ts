@@ -1,3 +1,4 @@
+import { SERVICE_LIMITS } from '../../config/business';
 import { formatThousands, parsePesos, searchKey } from '../../lib/text';
 import { formatCOP } from '../../lib/format';
 import type { Service } from '../../models/service';
@@ -5,8 +6,6 @@ import { cloneTemplate, field, setField } from '../../ui/template';
 import { priceItem } from './pricing';
 import { MAX_PRICE } from './validation';
 
-/** Cuántos accesos rápidos mostrar si ningún servicio está marcado como `quick`. */
-const DEFAULT_QUICK_COUNT = 5;
 const MAX_RESULTS = 8;
 
 export interface ItemValue {
@@ -206,8 +205,9 @@ export function createItemsEditor(elements: {
 
   // ---------- Accesos rápidos ----------
 
+  // Si ningún servicio está marcado como acceso rápido, se muestran los primeros del catálogo.
   const flagged = services.filter((service) => service.quick);
-  const quickServices = flagged.length > 0 ? flagged : services.slice(0, DEFAULT_QUICK_COUNT);
+  const quickServices = flagged.length > 0 ? flagged : services.slice(0, SERVICE_LIMITS.quickMax);
   const quickButtons = quickServices.map((service) => {
     const button = cloneTemplate<HTMLButtonElement>('tpl-quick-service');
     setField(button, 'name', service.name);

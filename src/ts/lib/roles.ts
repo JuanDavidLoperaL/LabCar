@@ -69,6 +69,11 @@ export function canVoidExpense(role: Role, isFromToday: boolean): boolean {
   return role === 'admin' || (role === 'manager' && isFromToday);
 }
 
+/** Catálogo de servicios (agregar, renombrar, borrar, accesos rápidos): solo el administrador. */
+export function canManageServices(role: Role): boolean {
+  return role === 'admin';
+}
+
 /** Pagos a vendedores: admin y manager eligen a cualquier empleado; basic solo ve lo suyo. */
 export function canSeeAllPayouts(role: Role): boolean {
   return role === 'admin' || role === 'manager';

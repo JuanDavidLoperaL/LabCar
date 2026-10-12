@@ -20,10 +20,10 @@ async function main(): Promise<void> {
   const db = connect();
   let created = 0;
 
-  for (const [index, service] of SERVICES.entries()) {
+  for (const service of SERVICES) {
     const ref = db.collection('services').doc(service.id);
     if ((await ref.get()).exists) continue;
-    await ref.set({ name: service.name, quick: true, order: (index + 1) * 10, active: true });
+    await ref.set({ name: service.name, quick: true });
     created++;
   }
 

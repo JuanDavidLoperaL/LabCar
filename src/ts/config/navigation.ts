@@ -28,7 +28,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     badge: { text: 'Sábado', variant: 'info' },
   },
   { id: 'servicios', label: 'Servicios', icon: 'minor_crash', href: '/html/servicios.html', roles: ['admin'] },
-  { id: 'usuarios', label: 'Usuarios y Roles', icon: 'admin_panel_settings', href: null, roles: ['admin'] },
+  { id: 'usuarios', label: 'Usuarios y Roles', icon: 'admin_panel_settings', href: '/html/usuarios.html', roles: ['admin'] },
 ];
 
 export function navItemsFor(role: Role): NavItem[] {

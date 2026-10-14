@@ -8,6 +8,13 @@ export const ROLE_LABELS: Record<Role, string> = {
   basic: 'Básico',
 };
 
+/** Qué puede hacer cada rol (se muestra al elegir el rol de un empleado en Usuarios y Roles). */
+export const ROLE_DESCRIPTIONS: Record<Role, string> = {
+  admin: 'Acceso total: panel, cartera, gastos, pagos, servicios y usuarios.',
+  manager: 'Registra ventas y gastos del día, anula ventas y cobra cartera.',
+  basic: 'Registra ventas y ve solo sus ventas y comisiones.',
+};
+
 export function isRole(value: unknown): value is Role {
   return typeof value === 'string' && (ROLES as readonly string[]).includes(value);
 }
@@ -71,6 +78,11 @@ export function canVoidExpense(role: Role, isFromToday: boolean): boolean {
 
 /** Catálogo de servicios (agregar, renombrar, borrar, accesos rápidos): solo el administrador. */
 export function canManageServices(role: Role): boolean {
+  return role === 'admin';
+}
+
+/** Usuarios y Roles (agregar, eliminar y cambiar el rol de los empleados): solo el administrador. */
+export function canManageUsers(role: Role): boolean {
   return role === 'admin';
 }
 

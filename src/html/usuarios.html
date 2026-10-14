@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="es" class="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Usuarios y Roles · LAB CAR</title>
+    <link rel="icon" type="image/png" href="../assets/images/favicon.png" />
+    <script type="module" src="../ts/pages/usuarios.ts"></script>
+  </head>
+  <!-- "invisible" evita mostrar la página antes de validar la sesión -->
+  <body class="invisible bg-surface font-body-md text-body-md text-on-surface antialiased min-h-screen">
+    <main class="relative bg-surface w-full px-gutter-mobile lg:px-gutter pt-space-lg pb-space-xl">
+      <!-- Solo admin -->
+      <section id="no-access" hidden class="flex flex-col items-center justify-center text-center gap-space-sm py-24">
+        <span class="material-symbols-outlined text-[48px] text-outline" aria-hidden="true">lock</span>
+        <h1 class="font-headline-md text-headline-md">Usuarios y Roles no está disponible para tu rol</h1>
+        <p class="text-on-surface-variant max-w-md">Usa el menú para ir a los módulos habilitados para ti. Si necesitas más acceso, habla con el administrador.</p>
+      </section>
+
+      <!-- Error al cargar -->
+      <section id="load-error" hidden class="flex flex-col items-center justify-center text-center gap-space-sm py-24">
+        <span class="material-symbols-outlined text-[48px] text-tertiary" aria-hidden="true">cloud_off</span>
+        <h1 class="font-headline-md text-headline-md">No se pudieron cargar los usuarios</h1>
+        <p id="load-error-text" class="text-on-surface-variant max-w-md">Revisa tu conexión a internet e intenta de nuevo.</p>
+        <button id="btn-retry" type="button" class="mt-space-sm px-space-lg py-2.5 rounded-xl bg-primary-container text-on-primary-container font-label-lg text-label-lg">Reintentar</button>
+      </section>
+
+      <div id="users" hidden class="max-w-4xl mx-auto flex flex-col gap-space-lg">
+        <!-- Encabezado -->
+        <div class="flex flex-wrap items-end justify-between gap-space-md">
+          <div class="flex flex-col gap-1">
+            <span class="self-start bg-primary/10 text-primary px-space-xs py-0.5 rounded font-label-sm text-label-sm tracking-wider uppercase">Equipo</span>
+            <h1 class="font-headline-lg text-headline-lg">Usuarios y Roles</h1>
+            <p class="text-on-surface-variant">Quién entra al sistema y qué puede hacer. Los cambios se guardan solo después de revisarlos y aceptarlos.</p>
+          </div>
+          <button id="btn-open-add" type="button"
+            class="h-12 px-space-lg rounded-lg bg-primary-container hover:bg-secondary-container text-on-primary-container font-label-lg text-label-lg flex items-center justify-center gap-space-xs transition-colors shadow-md">
+            <span class="material-symbols-outlined text-[20px]" aria-hidden="true">person_add</span>Agregar usuario
+          </button>
+        </div>
+
+        <!-- Búsqueda y filtro por rol -->
+        <section aria-label="Buscar usuario" class="bg-surface-container-low p-space-md rounded-xl flex flex-col lg:flex-row gap-space-md items-stretch lg:items-center justify-between shadow-sm">
+          <div class="relative flex-1 min-w-0">
+            <label for="search" class="sr-only">Buscar usuario</label>
+            <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-outline text-[20px] pointer-events-none" aria-hidden="true">search</span>
+            <input id="search" type="search" autocomplete="off" placeholder="Buscar por nombre, correo o usuario"
+              class="w-full h-11 bg-surface-container pl-10 pr-4 rounded-xl placeholder:text-outline/70 focus:outline-none focus:ring-1 focus:ring-primary" />
+          </div>
+          <div id="role-filter" role="group" aria-label="Filtrar por rol" class="flex items-center gap-1.5 overflow-x-auto">
+            <button type="button" data-role="all" aria-pressed="true" class="px-3 py-1.5 rounded-full font-label-sm text-label-sm whitespace-nowrap bg-surface-container text-on-surface-variant hover:text-on-surface aria-pressed:bg-primary-container aria-pressed:text-on-primary-container">Todos (<span data-count>0</span>)</button>
+            <button type="button" data-role="admin" aria-pressed="false" class="px-3 py-1.5 rounded-full font-label-sm text-label-sm whitespace-nowrap bg-surface-container text-on-surface-variant hover:text-on-surface aria-pressed:bg-primary-container aria-pressed:text-on-primary-container">Administrador (<span data-count>0</span>)</button>
+            <button type="button" data-role="manager" aria-pressed="false" class="px-3 py-1.5 rounded-full font-label-sm text-label-sm whitespace-nowrap bg-surface-container text-on-surface-variant hover:text-on-surface aria-pressed:bg-primary-container aria-pressed:text-on-primary-container">Manager (<span data-count>0</span>)</button>
+            <button type="button" data-role="basic" aria-pressed="false" class="px-3 py-1.5 rounded-full font-label-sm text-label-sm whitespace-nowrap bg-surface-container text-on-surface-variant hover:text-on-surface aria-pressed:bg-primary-container aria-pressed:text-on-primary-container">Básico (<span data-count>0</span>)</button>
+          </div>
+        </section>
+
+        <!-- Lista -->
+        <section id="team" data-loading="true" aria-busy="true" aria-labelledby="list-title"
+          class="bg-surface-container rounded-xl shadow-lg border border-surface-container-high/60 overflow-hidden flex flex-col">
+          <div class="p-space-md sm:px-space-lg border-b border-surface-container-high/60 flex items-center gap-space-sm">
+            <h2 id="list-title" class="font-headline-md text-headline-md">Empleados</h2>
+            <span id="list-count" data-skeleton class="bg-surface-container-high text-primary font-label-sm text-label-sm px-2.5 py-0.5 rounded-full"></span>
+          </div>
+
+          <ul id="user-list" data-dim-while-loading class="divide-y divide-surface-container-high/60"></ul>
+          <div id="user-empty" hidden class="flex flex-col items-center text-center gap-space-xs py-space-xl">
+            <span class="material-symbols-outlined text-[40px] text-outline" aria-hidden="true">person_search</span>
+            <p id="user-empty-text" class="text-on-surface-variant">Ningún empleado coincide con la búsqueda.</p>
+          </div>
+        </section>
+
+        <!-- Cambios sin guardar -->
+        <div id="save-bar" hidden
+          class="sticky bottom-20 lg:bottom-6 z-20 bg-surface-container-highest rounded-xl shadow-2xl border border-primary/30 p-space-sm sm:px-space-md flex flex-wrap items-center justify-between gap-space-sm">
+          <p class="flex items-center gap-space-xs font-label-lg text-label-lg">
+            <span class="material-symbols-outlined text-primary text-[20px]" aria-hidden="true">edit_note</span>
+            <span id="save-bar-text"></span>
+          </p>
+          <div class="flex items-center gap-space-xs ml-auto">
+            <button id="btn-discard" type="button" class="px-space-md py-2 rounded-lg bg-surface-container-high hover:bg-surface-bright font-label-md text-label-md">Descartar</button>
+            <button id="btn-review" type="button" class="px-space-md py-2 rounded-lg bg-primary-container hover:bg-secondary-container text-on-primary-container font-label-md text-label-md font-semibold flex items-center gap-1">
+              <span class="material-symbols-outlined text-[18px]" aria-hidden="true">fact_check</span>Revisar y guardar
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Agregar usuario (queda pendiente hasta confirmar) -->
+    <dialog id="add-dialog" aria-labelledby="add-title"
+      class="m-auto w-[min(520px,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] rounded-2xl bg-surface-container-low text-on-surface p-0 shadow-2xl backdrop:bg-black/70 backdrop:backdrop-blur-sm">
+      <form id="add-form" novalidate class="flex flex-col">
+        <div class="flex items-start justify-between gap-space-sm p-space-md sm:p-space-lg border-b border-outline-variant/30">
+          <div class="flex items-center gap-space-xs">
+            <span class="p-1.5 rounded-lg bg-primary-container text-on-primary-container flex items-center justify-center">
+              <span class="material-symbols-outlined text-[18px]" aria-hidden="true">person_add</span>
+            </span>
+            <h2 id="add-title" class="font-headline-md text-headline-md font-bold">Agregar usuario</h2>
+          </div>
+          <button type="button" data-close-dialog aria-label="Cerrar" class="p-1.5 rounded-lg text-outline hover:text-on-surface hover:bg-surface-container-high flex">
+            <span class="material-symbols-outlined" aria-hidden="true">close</span>
+          </button>
+        </div>
+
+        <div class="p-space-md sm:p-space-lg flex flex-col gap-space-md">
+          <div class="flex flex-col gap-1.5">
+            <label for="add-name" class="font-label-md text-label-md text-on-surface-variant">Nombre completo</label>
+            <input id="add-name" type="text" autocomplete="off" placeholder="Ej. Juan Pérez" aria-describedby="add-name-error"
+              class="w-full h-12 bg-surface-container px-space-md rounded-lg border border-outline-variant/40 placeholder:text-outline focus:outline-none focus:ring-1 focus:ring-primary aria-invalid:border-error" />
+            <p id="add-name-error" hidden class="font-body-sm text-body-sm text-error"></p>
+          </div>
+
+          <fieldset class="flex flex-col gap-1.5">
+            <legend class="font-label-md text-label-md text-on-surface-variant mb-1.5">¿Cómo va a entrar?</legend>
+            <div id="access-type" class="grid grid-cols-2 gap-space-xs">
+              <label class="flex items-center gap-space-xs p-space-sm rounded-lg bg-surface-container border border-outline-variant/40 cursor-pointer has-checked:border-primary has-checked:bg-primary/10">
+                <input type="radio" name="access" value="google" checked class="accent-primary" />
+                <span class="font-label-md text-label-md">Cuenta de Google</span>
+              </label>
+              <label class="flex items-center gap-space-xs p-space-sm rounded-lg bg-surface-container border border-outline-variant/40 cursor-pointer has-checked:border-primary has-checked:bg-primary/10">
+                <input type="radio" name="access" value="password" class="accent-primary" />
+                <span class="font-label-md text-label-md">Con contraseña</span>
+              </label>
+            </div>
+          </fieldset>
+
+          <div id="field-email" class="flex flex-col gap-1.5">
+            <label for="add-email" class="font-label-md text-label-md text-on-surface-variant">Correo de Google</label>
+            <input id="add-email" type="email" autocomplete="off" placeholder="nombre@gmail.com" aria-describedby="add-email-error add-email-help"
+              class="w-full h-12 bg-surface-container px-space-md rounded-lg border border-outline-variant/40 placeholder:text-outline focus:outline-none focus:ring-1 focus:ring-primary aria-invalid:border-error" />
+            <p id="add-email-help" class="font-body-sm text-body-sm text-outline">Entrará con el botón "Continuar con Google" usando este correo.</p>
+            <p id="add-email-error" hidden class="font-body-sm text-body-sm text-error"></p>
+          </div>
+
+          <div id="field-login" hidden class="grid sm:grid-cols-2 gap-space-md">
+            <div class="flex flex-col gap-1.5">
+              <label for="add-login" class="font-label-md text-label-md text-on-surface-variant">Usuario o correo</label>
+              <input id="add-login" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Ej. juanp o juan@correo.com" aria-describedby="add-login-error"
+                class="w-full h-12 bg-surface-container px-space-md rounded-lg border border-outline-variant/40 placeholder:text-outline focus:outline-none focus:ring-1 focus:ring-primary aria-invalid:border-error" />
+              <p class="font-body-sm text-body-sm text-outline">Es lo que escribirá en el login. Con correo podrá recuperar su contraseña.</p>
+              <p id="add-login-error" hidden class="font-body-sm text-body-sm text-error"></p>
+            </div>
+            <div id="field-password" class="flex flex-col gap-1.5">
+              <label for="add-password" class="font-label-md text-label-md text-on-surface-variant">Contraseña inicial</label>
+              <div class="relative">
+                <input id="add-password" type="password" autocomplete="new-password" placeholder="Mínimo 6 caracteres" aria-describedby="add-password-error"
+                  class="w-full h-12 bg-surface-container pl-space-md pr-11 rounded-lg border border-outline-variant/40 placeholder:text-outline focus:outline-none focus:ring-1 focus:ring-primary aria-invalid:border-error" />
+                <button id="toggle-add-password" type="button" aria-label="Mostrar contraseña" class="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-outline hover:text-on-surface flex">
+                  <span id="add-password-icon" class="material-symbols-outlined text-[20px]" aria-hidden="true">visibility</span>
+                </button>
+              </div>
+              <p id="add-password-error" hidden class="font-body-sm text-body-sm text-error"></p>
+            </div>
+            <p id="reactivate-help" hidden class="sm:col-span-2 font-body-sm text-body-sm text-primary flex items-start gap-1">
+              <span class="material-symbols-outlined text-[18px]" aria-hidden="true">history</span>
+              <span>Este usuario fue eliminado antes. Se reactivará y conservará su contraseña anterior.</span>
+            </p>
+          </div>
+
+          <div class="flex flex-col gap-1.5">
+            <label for="add-role" class="font-label-md text-label-md text-on-surface-variant">Rol</label>
+            <select id="add-role"
+              class="w-full h-12 bg-surface-container px-space-md rounded-lg border border-outline-variant/40 focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer">
+              <option value="basic">Básico</option>
+              <option value="manager">Manager</option>
+              <option value="admin">Administrador</option>
+            </select>
+            <p id="add-role-help" class="font-body-sm text-body-sm text-outline"></p>
+          </div>
+
+          <div class="grid sm:grid-cols-2 gap-space-md">
+            <div class="flex flex-col gap-1.5">
+              <label for="add-document" class="font-label-md text-label-md text-on-surface-variant">Cédula <span class="text-outline">(opcional)</span></label>
+              <input id="add-document" type="text" inputmode="numeric" autocomplete="off" placeholder="Ej. 1036782901" aria-describedby="add-document-error"
+                class="w-full h-12 bg-surface-container px-space-md rounded-lg border border-outline-variant/40 placeholder:text-outline focus:outline-none focus:ring-1 focus:ring-primary aria-invalid:border-error" />
+              <p id="add-document-error" hidden class="font-body-sm text-body-sm text-error"></p>
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label for="add-phone" class="font-label-md text-label-md text-on-surface-variant">Celular <span class="text-outline">(opcional)</span></label>
+              <input id="add-phone" type="tel" inputmode="numeric" autocomplete="off" placeholder="Ej. 3148209942" aria-describedby="add-phone-error"
+                class="w-full h-12 bg-surface-container px-space-md rounded-lg border border-outline-variant/40 placeholder:text-outline focus:outline-none focus:ring-1 focus:ring-primary aria-invalid:border-error" />
+              <p id="add-phone-error" hidden class="font-body-sm text-body-sm text-error"></p>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-space-xs p-space-md sm:p-space-lg border-t border-outline-variant/30">
+          <button type="button" data-close-dialog class="px-space-md py-2 rounded-lg bg-surface-container-high hover:bg-surface-bright font-label-md text-label-md">Cancelar</button>
+          <button type="submit" class="px-space-md py-2 rounded-lg bg-primary-container hover:bg-secondary-container text-on-primary-container font-label-md text-label-md font-semibold flex items-center gap-1">
+            <span class="material-symbols-outlined text-[18px]" aria-hidden="true">add</span>Agregar a la lista
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- Doble confirmación antes de guardar -->
+    <dialog id="confirm-dialog" aria-labelledby="confirm-title"
+      class="m-auto w-[min(520px,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] rounded-2xl bg-surface-container-low text-on-surface p-0 shadow-2xl backdrop:bg-black/70 backdrop:backdrop-blur-sm">
+      <form id="confirm-form" class="flex flex-col max-h-[calc(100vh-2rem)]">
+        <div class="flex items-start justify-between gap-space-sm p-space-md sm:p-space-lg border-b border-outline-variant/30">
+          <div class="flex flex-col gap-1">
+            <h2 id="confirm-title" class="font-headline-md text-headline-md font-bold">Confirma los cambios</h2>
+            <p class="text-on-surface-variant font-body-sm text-body-sm">Revisa que todo esté bien. Esto es lo que se va a guardar:</p>
+          </div>
+          <button type="button" data-close-dialog aria-label="Cerrar" class="p-1.5 rounded-lg text-outline hover:text-on-surface hover:bg-surface-container-high flex">
+            <span class="material-symbols-outlined" aria-hidden="true">close</span>
+          </button>
+        </div>
+        <div class="p-space-md sm:p-space-lg flex flex-col gap-space-sm overflow-y-auto">
+          <ul id="confirm-list" class="flex flex-col gap-space-xs"></ul>
+          <p id="confirm-error" hidden class="font-body-sm text-body-sm text-error"></p>
+        </div>
+        <div class="flex justify-end gap-space-xs p-space-md sm:p-space-lg border-t border-outline-variant/30">
+          <button type="button" data-close-dialog class="px-space-md py-2 rounded-lg bg-surface-container-high hover:bg-surface-bright font-label-md text-label-md">Volver</button>
+          <button id="btn-confirm" type="submit" class="px-space-md py-2 rounded-lg bg-primary-container hover:bg-secondary-container text-on-primary-container font-label-md text-label-md font-semibold flex items-center gap-1 disabled:opacity-60">
+            <span class="material-symbols-outlined text-[18px]" aria-hidden="true">check</span><span id="btn-confirm-text">Aceptar y guardar</span>
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- Una línea del popup de confirmación -->
+    <template id="tpl-change">
+      <li data-kind="add" class="group flex items-start gap-space-sm p-space-sm rounded-lg bg-surface-container">
+        <span class="shrink-0 w-8 h-8 rounded-full flex items-center justify-center
+          group-data-[kind=add]:bg-primary/15 group-data-[kind=add]:text-primary
+          group-data-[kind=role]:bg-amber-500/15 group-data-[kind=role]:text-amber-300
+          group-data-[kind=remove]:bg-error-container/30 group-data-[kind=remove]:text-error">
+          <span data-field="icon" class="material-symbols-outlined text-[18px]" aria-hidden="true"></span>
+        </span>
+        <div class="min-w-0 flex flex-col">
+          <span data-field="title" class="font-label-lg text-label-lg break-words"></span>
+          <span data-field="detail" class="font-body-sm text-body-sm text-on-surface-variant break-words"></span>
+        </div>
+      </li>
+    </template>
+
+    <!--
+      Una fila de la lista. data-state: saved | added | removed. data-role-changed marca un rol cambiado sin guardar.
+      data-self: la cuenta del admin en sesión (no puede cambiar su rol ni eliminarse).
+    -->
+    <template id="tpl-user">
+      <li data-state="saved" data-role-changed="false" data-self="false"
+        class="group p-space-md sm:px-space-lg flex flex-col sm:flex-row sm:items-center gap-space-sm transition-colors hover:bg-surface-container-high/40
+          data-[state=added]:bg-primary/5 data-[role-changed=true]:bg-amber-500/5 data-[state=removed]:bg-error-container/10">
+        <div class="flex items-center gap-space-sm flex-1 min-w-0">
+          <span data-field="initials"
+            class="shrink-0 w-10 h-10 rounded-full bg-surface-container-highest text-primary font-label-lg text-label-lg flex items-center justify-center group-data-[state=removed]:opacity-50"></span>
+          <div class="min-w-0 flex flex-col">
+            <div class="flex flex-wrap items-center gap-x-space-xs gap-y-0.5">
+              <span data-field="name" class="font-body-lg text-body-lg font-medium break-words group-data-[state=removed]:line-through group-data-[state=removed]:text-outline"></span>
+              <span class="hidden group-data-[self=true]:inline font-label-sm text-label-sm text-primary bg-primary/10 px-2 py-0.5 rounded-full">Tú</span>
+              <span class="hidden group-data-[state=added]:inline font-label-sm text-label-sm text-primary bg-primary/15 px-2 py-0.5 rounded-full">Nuevo · sin guardar</span>
+              <span class="hidden group-data-[state=removed]:inline font-label-sm text-label-sm text-error bg-error-container/30 px-2 py-0.5 rounded-full">Se eliminará</span>
+              <span class="hidden group-data-[role-changed=true]:inline font-label-sm text-label-sm text-amber-300 bg-amber-500/15 px-2 py-0.5 rounded-full">Antes: <span data-field="previous-role"></span></span>
+            </div>
+            <span class="flex items-center gap-1 font-body-sm text-body-sm text-on-surface-variant min-w-0">
+              <span data-field="access-icon" class="material-symbols-outlined text-[16px] text-outline" aria-hidden="true"></span>
+              <span data-field="identifier" class="truncate"></span>
+            </span>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-space-xs sm:shrink-0 pl-[3.25rem] sm:pl-0">
+          <label class="sr-only" data-field="role-label">Rol</label>
+          <select data-field="role"
+            class="flex-1 sm:flex-none sm:w-44 h-10 bg-surface-container-low px-space-sm rounded-lg border border-outline-variant/40 font-label-md text-label-md focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer disabled:cursor-not-allowed disabled:opacity-60
+              group-data-[role-changed=true]:border-amber-400/60">
+            <option value="admin">Administrador</option>
+            <option value="manager">Manager</option>
+            <option value="basic">Básico</option>
+          </select>
+          <button type="button" data-action="remove" title="Eliminar usuario"
+            class="shrink-0 p-2 rounded-lg text-outline hover:text-error hover:bg-error-container/20 transition-colors flex disabled:opacity-30 disabled:pointer-events-none group-data-[state=removed]:hidden group-data-[state=added]:hidden">
+            <span class="material-symbols-outlined text-[20px]" aria-hidden="true">person_remove</span>
+          </button>
+          <button type="button" data-action="undo" title="Deshacer"
+            class="hidden group-data-[state=removed]:flex group-data-[state=added]:flex shrink-0 p-2 rounded-lg text-outline hover:text-on-surface hover:bg-surface-container-high transition-colors">
+            <span class="material-symbols-outlined text-[20px]" aria-hidden="true">undo</span>
+          </button>
+        </div>
+      </li>
+    </template>
+  </body>
+</html>

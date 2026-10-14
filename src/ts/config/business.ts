@@ -66,3 +66,17 @@ export const PAYMENT_ACCOUNT = {
   holder: 'LAB CAR',
   isPlaceholder: true,
 } as const;
+
+/**
+ * Datos de un empleado en Usuarios y Roles. El usuario (sin correo) se guarda en Auth como
+ * usuario@usuarios.labcar.local; la contraseña mínima la exige Firebase Auth (6).
+ */
+export const USER_LIMITS = {
+  nameMin: 3,
+  nameMax: 100,
+  usernameMin: 3,
+  usernameMax: 30,
+  passwordMin: 6,
+  documentMax: 15,
+  phoneMax: 15,
+} as const;

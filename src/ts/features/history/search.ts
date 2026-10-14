@@ -1,6 +1,6 @@
 import { fetchHistory, HISTORY_LIMIT, type HistoryQuery } from '../../data/sales';
 import type { DateRange } from '../../lib/dates';
-import type { Sale, SaleStatus } from '../../models/sale';
+import type { PaymentMethod, Sale, SaleStatus } from '../../models/sale';
 
 export interface HistoryFilters {
   /** Placa o cédula/NIT; vacío = sin búsqueda. */
@@ -8,6 +8,8 @@ export interface HistoryFilters {
   range: DateRange;
   sellerEmail: string | null;
   status: SaleStatus | null;
+  /** Forma de pago con que se registró la venta (un crédito cobrado después sigue siendo crédito). */
+  paymentMethod: PaymentMethod | null;
 }
 
 export interface HistoryResult {
@@ -75,6 +77,7 @@ export async function searchHistory(filters: HistoryFilters, restrictTo: string 
     (sale) =>
       matchesTerm(sale, term) &&
       (!filters.status || sale.status === filters.status) &&
+      (!filters.paymentMethod || sale.paymentMethod === filters.paymentMethod) &&
       (!sellerEmail || sale.sellers.some((seller) => seller.email === sellerEmail)),
   );
   return {

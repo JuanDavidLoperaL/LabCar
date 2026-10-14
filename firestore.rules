@@ -36,7 +36,17 @@ service cloud.firestore {
     }
 
     function isMember() {
-      return hasRole(['admin', 'manager', 'basic']);
+      return hasRole(['admin', 'manager', 'sales', 'basic']);
+    }
+
+    // Quién registra ventas: todos menos basic (basic solo consulta sus ventas y comisiones).
+    function canSell() {
+      return hasRole(['admin', 'manager', 'sales']);
+    }
+
+    // Quién ve todas las ventas en el historial: admin, manager y vendedor (sales).
+    function seesAllSales() {
+      return hasRole(['admin', 'manager', 'sales']);
     }
 
     // Medianoche de hoy en Colombia (UTC-5), con 15 min de tolerancia por
@@ -248,7 +258,7 @@ service cloud.firestore {
       let d = request.resource.data;
       return email != sessionEmail()
         && d.name is string && d.name.size() >= 1 && d.name.size() <= 100
-        && d.role in ['admin', 'manager', 'basic']
+        && d.role in ['admin', 'manager', 'sales', 'basic']
         && d.get('access', 'google') in ['google', 'password']
         && d.active is bool
         && d.updatedAt == request.time
@@ -257,6 +267,24 @@ service cloud.firestore {
 
     function isValidContactField(value) {
       return value is string && value.matches('^[0-9]{0,15}$');
+    }
+
+    function isValidCustomer(customerId) {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['documentType', 'documentNumber', 'personType', 'name', 'phone', 'email', 'city',
+          'address', 'taxRegime', 'updatedAt', 'updatedBy'])
+        && d.documentType in ['CC', 'NIT', 'CE', 'PP']
+        && d.documentNumber is string && d.documentNumber.matches('^[A-Z0-9]{4,20}$')
+        && customerId == d.documentType + '-' + d.documentNumber
+        && d.personType in ['natural', 'legal']
+        && d.name is string && d.name.size() >= 3 && d.name.size() <= 120
+        && d.phone is string && d.phone.matches('^3[0-9]{9}$')
+        && d.email is string && d.email.size() <= 120
+        && d.city is string && d.city.size() <= 60
+        && d.address is string && d.address.size() <= 120
+        && d.taxRegime in ['not-vat-responsible', 'vat-responsible']
+        && d.updatedAt == request.time
+        && d.updatedBy == sessionEmail();
     }
 
     // ---------- Usuarios ----------
@@ -294,6 +322,15 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ---------- Clientes ----------
+    // Los registra el admin en Servicios y Clientes (ID = "{tipo}-{número}"). Quien registra ventas
+    // los lee para preseleccionarlos; la venta guarda su propia copia de los datos.
+    match /customers/{customerId} {
+      allow read: if canSell();
+      allow create, update: if hasRole(['admin']) && isValidCustomer(customerId);
+      allow delete: if hasRole(['admin']);
+    }
+
     // ---------- Catálogo y configuración ----------
     // Catálogo de servicios: solo el admin lo cambia desde Servicios. Se borran de verdad (las ventas
     // guardan el nombre). El máximo de 5 accesos rápidos lo controla la app.
@@ -320,11 +357,11 @@ service cloud.firestore {
     // Solo puede avanzar de uno en uno y junto con la venta de ese número.
     match /counters/sales {
       allow read: if isMember();
-      allow create: if isMember()
+      allow create: if canSell()
         && request.resource.data.keys().hasOnly(['value'])
         && request.resource.data.value == 1
         && existsAfter(salePath(1));
-      allow update: if isMember()
+      allow update: if canSell()
         && request.resource.data.keys().hasOnly(['value'])
         && request.resource.data.value == resource.data.value + 1
         && existsAfter(salePath(request.resource.data.value));
@@ -335,8 +372,8 @@ service cloud.firestore {
     // de Firestore se pierde y el usuario reintenta, la transacción encuentra este registro
     // y devuelve la venta ya creada en vez de duplicarla.
     match /saleRequests/{requestId} {
-      allow get: if isMember() && (resource == null || resource.data.createdBy == sessionEmail());
-      allow create: if isMember()
+      allow get: if canSell() && (resource == null || resource.data.createdBy == sessionEmail());
+      allow create: if canSell()
         && request.resource.data.keys().hasOnly(['saleId', 'createdBy'])
         && request.resource.data.createdBy == sessionEmail()
         && getAfter(/databases/$(database)/documents/sales/$(request.resource.data.saleId)).data.requestId == requestId;
@@ -344,15 +381,15 @@ service cloud.firestore {
     }
 
     // ---------- Ventas ----------
-    // Admin y manager ven todas; basic solo aquellas en las que es vendedor
+    // Admin, manager y vendedor (sales) ven todas; basic solo aquellas en las que es vendedor
     // (o que registró, para poder imprimir el recibo). Nunca se borran: se anulan.
     match /sales/{saleId} {
-      allow get: if hasRole(['admin', 'manager'])
+      allow get: if seesAllSales()
         || (hasRole(['basic'])
           && (sessionEmail() in resource.data.sellerEmails || resource.data.createdBy.email == sessionEmail()));
-      allow list: if hasRole(['admin', 'manager'])
+      allow list: if seesAllSales()
         || (hasRole(['basic']) && sessionEmail() in resource.data.sellerEmails);
-      allow create: if isMember() && isValidNewSale(saleId);
+      allow create: if canSell() && isValidNewSale(saleId);
       allow update: if hasRole(['admin', 'manager']) && (isValidVoid() || isValidSettlement());
       allow delete: if false;
     }

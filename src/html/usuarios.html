@@ -51,6 +51,7 @@
             <button type="button" data-role="all" aria-pressed="true" class="px-3 py-1.5 rounded-full font-label-sm text-label-sm whitespace-nowrap bg-surface-container text-on-surface-variant hover:text-on-surface aria-pressed:bg-primary-container aria-pressed:text-on-primary-container">Todos (<span data-count>0</span>)</button>
             <button type="button" data-role="admin" aria-pressed="false" class="px-3 py-1.5 rounded-full font-label-sm text-label-sm whitespace-nowrap bg-surface-container text-on-surface-variant hover:text-on-surface aria-pressed:bg-primary-container aria-pressed:text-on-primary-container">Administrador (<span data-count>0</span>)</button>
             <button type="button" data-role="manager" aria-pressed="false" class="px-3 py-1.5 rounded-full font-label-sm text-label-sm whitespace-nowrap bg-surface-container text-on-surface-variant hover:text-on-surface aria-pressed:bg-primary-container aria-pressed:text-on-primary-container">Manager (<span data-count>0</span>)</button>
+            <button type="button" data-role="sales" aria-pressed="false" class="px-3 py-1.5 rounded-full font-label-sm text-label-sm whitespace-nowrap bg-surface-container text-on-surface-variant hover:text-on-surface aria-pressed:bg-primary-container aria-pressed:text-on-primary-container">Vendedor (<span data-count>0</span>)</button>
             <button type="button" data-role="basic" aria-pressed="false" class="px-3 py-1.5 rounded-full font-label-sm text-label-sm whitespace-nowrap bg-surface-container text-on-surface-variant hover:text-on-surface aria-pressed:bg-primary-container aria-pressed:text-on-primary-container">Básico (<span data-count>0</span>)</button>
           </div>
         </section>
@@ -163,6 +164,7 @@
             <select id="add-role"
               class="w-full h-12 bg-surface-container px-space-md rounded-lg border border-outline-variant/40 focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer">
               <option value="basic">Básico</option>
+              <option value="sales">Vendedor</option>
               <option value="manager">Manager</option>
               <option value="admin">Administrador</option>
             </select>
@@ -269,6 +271,7 @@
               group-data-[role-changed=true]:border-amber-400/60">
             <option value="admin">Administrador</option>
             <option value="manager">Manager</option>
+            <option value="sales">Vendedor</option>
             <option value="basic">Básico</option>
           </select>
           <button type="button" data-action="remove" title="Eliminar usuario"

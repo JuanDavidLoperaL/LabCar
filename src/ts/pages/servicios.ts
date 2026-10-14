@@ -1,6 +1,7 @@
 import '../../css/main.css';
 import { SERVICE_LIMITS } from '../config/business';
 import { createService, watchServices } from '../data/services';
+import { setupCustomersTab } from '../features/customers/tab';
 import { setupDeleteDialog } from '../features/services/delete-dialog';
 import { setupServiceList } from '../features/services/list';
 import { normalizeServiceName, serviceNameError } from '../features/services/validation';
@@ -14,9 +15,29 @@ import { showToast } from '../ui/toast';
 
 function showLoadError(message: string): void {
   byId('services').hidden = true;
+  byId('clients').hidden = true;
+  byId('tabs').hidden = true;
   byId('load-error').hidden = false;
   byId('load-error-text').textContent = message;
   byId('btn-retry').addEventListener('click', () => window.location.reload(), { once: true });
+}
+
+const TABS = ['services', 'clients'] as const;
+
+/** Pestañas Servicios / Clientes. La elegida queda en la URL (?tab=clientes) para volver a ella al recargar. */
+function setupTabs(): void {
+  byId('tabs').hidden = false;
+  const buttons = byId('tabs').querySelectorAll<HTMLButtonElement>('[data-tab]');
+  const select = (tab: (typeof TABS)[number]) => {
+    buttons.forEach((button) => button.setAttribute('aria-selected', String(button.dataset.tab === tab)));
+    TABS.forEach((id) => (byId(id).hidden = id !== tab));
+    const url = new URL(window.location.href);
+    if (tab === 'clients') url.searchParams.set('tab', 'clientes');
+    else url.searchParams.delete('tab');
+    window.history.replaceState(null, '', url);
+  };
+  buttons.forEach((button) => button.addEventListener('click', () => select(button.dataset.tab === 'clients' ? 'clients' : 'services')));
+  select(new URLSearchParams(window.location.search).get('tab') === 'clientes' ? 'clients' : 'services');
 }
 
 function main(session: SessionUser): void {
@@ -24,7 +45,8 @@ function main(session: SessionUser): void {
     byId('no-access').hidden = false;
     return;
   }
-  byId('services').hidden = false;
+  setupTabs();
+  setupCustomersTab(session.user.email?.toLowerCase() ?? '');
 
   let services: Service[] = [];
   const renderList = setupServiceList(setupDeleteDialog());

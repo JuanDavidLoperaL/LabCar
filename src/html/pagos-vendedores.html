@@ -10,6 +10,13 @@
   <!-- "invisible" evita mostrar la página antes de validar la sesión -->
   <body class="invisible bg-surface font-body-md text-body-md text-on-surface antialiased min-h-screen">
     <main class="relative bg-surface w-full px-gutter-mobile lg:px-gutter pt-space-lg pb-space-xl">
+      <!-- Sin acceso para este rol -->
+      <section id="no-access" hidden class="flex flex-col items-center justify-center text-center gap-space-sm py-24">
+        <span class="material-symbols-outlined text-[48px] text-outline" aria-hidden="true">lock</span>
+        <h1 class="font-headline-md text-headline-md">Pagos Vendedores no está disponible para tu rol</h1>
+        <p class="text-on-surface-variant max-w-md">Usa el menú para ir a los módulos habilitados para ti. Si necesitas más acceso, habla con el administrador.</p>
+      </section>
+
       <!-- Error al cargar -->
       <section id="load-error" hidden class="flex flex-col items-center justify-center text-center gap-space-sm py-24">
         <span class="material-symbols-outlined text-[48px] text-tertiary" aria-hidden="true">cloud_off</span>

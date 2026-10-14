@@ -3,6 +3,7 @@ import { createSale, type NewSale } from '../../data/sales';
 import { errorCode, firestoreErrorMessage } from '../../lib/errors';
 import { businessNit, whatsappUrl } from '../receipt/content';
 import { printReceipt } from '../receipt/print';
+import { createCustomerPicker } from './customer-picker';
 import { createItemsEditor } from './items-editor';
 import { maskPlate, MASKED_PLATE_LENGTH, normalizePlate, OTHER_PLATE_LENGTH, PLATE_HINTS } from './plate';
 import { computeSaleTotals } from './pricing';
@@ -19,6 +20,7 @@ import {
   type ValidationResult,
 } from './validation';
 import type { SessionUser } from '../../lib/auth';
+import type { Customer } from '../../models/customer';
 import type { Service } from '../../models/service';
 import type { AppUser } from '../../models/user';
 import { nitVerificationDigit, normalizeDocumentNumber, normalizePhone } from '../../lib/dian';
@@ -62,10 +64,12 @@ export interface SalePageData {
   users: AppUser[];
   services: Service[];
   commissionRate: number;
+  /** Clientes registrados en Servicios y Clientes para preseleccionar (vacío si no se pudieron cargar). */
+  customers: Customer[];
 }
 
 /** Monta el formulario de nueva venta con los datos ya cargados (vendedores, catálogo, comisión). */
-export function mountSalePage(session: SessionUser, { users, services, commissionRate }: SalePageData): void {
+export function mountSalePage(session: SessionUser, { users, services, commissionRate, customers }: SalePageData): void {
   const currentEmail = session.user.email?.toLowerCase() ?? '';
   const currentName = session.profile.name || session.user.displayName || currentEmail;
 
@@ -110,6 +114,37 @@ export function mountSalePage(session: SessionUser, { users, services, commissio
     services,
     onChange: () => update(),
   });
+
+  // ---------- Cliente registrado ----------
+
+  /** Llena los datos del cliente con uno registrado. Siguen siendo editables y no cambian el cliente guardado. */
+  function fillCustomer(customer: Customer): void {
+    documentType.value = customer.documentType;
+    documentInput.value = customer.documentNumber;
+    documentInput.inputMode = customer.documentType === 'CC' || customer.documentType === 'NIT' ? 'numeric' : 'text';
+    byId<HTMLInputElement>('customer-name').value = customer.name;
+    byId<HTMLInputElement>('customer-phone').value = customer.phone;
+    byId<HTMLInputElement>('customer-email').value = customer.email;
+    // Si el cliente no tiene ciudad, se deja la que ya estaba (por defecto Medellín).
+    if (customer.city) byId<HTMLInputElement>('customer-city').value = customer.city;
+    byId<HTMLInputElement>('customer-address').value = customer.address;
+    byId<HTMLSelectElement>('customer-tax-regime').value = customer.taxRegime;
+    const personType = document.querySelector<HTMLInputElement>(`input[name="person-type"][value="${customer.personType}"]`);
+    if (personType) personType.checked = true;
+    byId('customer-picked-text').textContent = `Se cargaron los datos de ${customer.name}. Puedes editarlos: los cambios solo aplican a esta venta.`;
+    byId('customer-picked').hidden = false;
+    update();
+  }
+
+  if (customers.length > 0) {
+    byId('customer-picker').hidden = false;
+    createCustomerPicker({
+      search: byId<HTMLInputElement>('customer-pick'),
+      results: byId<HTMLUListElement>('customer-pick-results'),
+      customers,
+      onPick: fillCustomer,
+    });
+  }
 
   // ---------- Lectura del formulario ----------
 

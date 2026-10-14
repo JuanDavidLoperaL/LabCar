@@ -1,9 +1,11 @@
 import '../../css/main.css';
+import { fetchCustomers } from '../data/customers';
 import { fetchServices } from '../data/services';
 import { fetchCommissionRate } from '../data/settings';
 import { fetchActiveUsers } from '../data/users';
 import { mountSalePage } from '../features/sales/page';
 import { requireSession } from '../lib/auth';
+import { canRegisterSales } from '../lib/roles';
 import { byId } from '../ui/dom';
 import { mountShell } from '../ui/shell';
 
@@ -18,8 +20,22 @@ async function main(): Promise<void> {
   const session = await requireSession();
   mountShell(session, 'ventas');
   document.body.classList.remove('invisible');
-  const [users, services, commissionRate] = await Promise.all([fetchActiveUsers(), fetchServices(), fetchCommissionRate()]);
-  mountSalePage(session, { users, services, commissionRate });
+  if (!canRegisterSales(session.profile.role)) {
+    byId('sale-form').hidden = true;
+    byId('no-access').hidden = false;
+    return;
+  }
+  const [users, services, commissionRate, customers] = await Promise.all([
+    fetchActiveUsers(),
+    fetchServices(),
+    fetchCommissionRate(),
+    // Sin la lista de clientes la venta se puede registrar igual: solo no aparece "Preseleccionar cliente".
+    fetchCustomers().catch((error: unknown) => {
+      console.error(error);
+      return [];
+    }),
+  ]);
+  mountSalePage(session, { users, services, commissionRate, customers });
 }
 
 main().catch((error: unknown) => {

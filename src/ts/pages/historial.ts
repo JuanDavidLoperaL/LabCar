@@ -8,8 +8,8 @@ import { printReceipt } from '../features/receipt/print';
 import { requireSession, type SessionUser } from '../lib/auth';
 import { firestoreErrorMessage } from '../lib/errors';
 import { periodRange, rangeFromDateInputs, toDateInputValue } from '../lib/dates';
-import { canSeeAllSales, canVoidSales } from '../lib/roles';
-import { SALE_STATUSES, type Sale } from '../models/sale';
+import { canSeeAllSales, canSeeSaleCommissions, canVoidSales } from '../lib/roles';
+import { PAYMENT_METHODS, SALE_STATUSES, type Sale } from '../models/sale';
 import { byId } from '../ui/dom';
 import { mountShell } from '../ui/shell';
 import { showToast } from '../ui/toast';
@@ -21,6 +21,7 @@ async function main(session: SessionUser): Promise<void> {
   const role = session.profile.role;
   const seesAll = canSeeAllSales(role);
   const canVoid = canVoidSales(role);
+  const showCommissions = canSeeSaleCommissions(role);
   /** Basic solo ve sus propias ventas. */
   const restrictTo = seesAll ? null : email;
 
@@ -30,12 +31,15 @@ async function main(session: SessionUser): Promise<void> {
   const toInput = byId<HTMLInputElement>('filter-to');
   const sellerSelect = byId<HTMLSelectElement>('filter-seller');
   const statusSelect = byId<HTMLSelectElement>('filter-status');
+  const paymentSelect = byId<HTMLSelectElement>('filter-payment');
   const dialog = byId<HTMLDialogElement>('sale-dialog');
 
   byId('history-subtitle').textContent = seesAll
     ? 'Todas las ventas. Busca por placa o cédula para ver el historial completo de un cliente.'
     : 'Tus ventas y tus comisiones.';
   byId('summary-commission-label').textContent = seesAll ? 'Comisiones' : 'Tu comisión';
+  // El vendedor ve todas las ventas, pero no las comisiones de los demás.
+  if (!showCommissions) byId('summary-commission-card').remove();
 
   function setDefaultDates(): void {
     const month = periodRange('month');
@@ -56,7 +60,7 @@ async function main(session: SessionUser): Promise<void> {
 
   function openDetail(sale: Sale): void {
     current = sale;
-    renderDetail(sale);
+    renderDetail(sale, showCommissions);
     byId<HTMLAnchorElement>('detail-whatsapp').href = whatsappUrl(sale);
     byId('btn-void').hidden = !canVoid || sale.status === 'void';
     byId('void-form').hidden = true;
@@ -135,6 +139,7 @@ async function main(session: SessionUser): Promise<void> {
       range,
       sellerEmail: sellerSelect.value || null,
       status: SALE_STATUSES.find((status) => status === statusSelect.value) ?? null,
+      paymentMethod: PAYMENT_METHODS.find((method) => method === paymentSelect.value) ?? null,
     };
   }
 
@@ -173,13 +178,14 @@ async function main(session: SessionUser): Promise<void> {
     event.preventDefault();
     void runSearch();
   });
-  for (const control of [fromInput, toInput, sellerSelect, statusSelect]) {
+  for (const control of [fromInput, toInput, sellerSelect, statusSelect, paymentSelect]) {
     control.addEventListener('change', () => void runSearch());
   }
   byId('btn-clear-filters').addEventListener('click', () => {
     searchInput.value = '';
     sellerSelect.value = '';
     statusSelect.value = '';
+    paymentSelect.value = '';
     setDefaultDates();
     void runSearch();
   });

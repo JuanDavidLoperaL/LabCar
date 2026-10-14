@@ -1,10 +1,11 @@
-export const ROLES = ['admin', 'manager', 'basic'] as const;
+export const ROLES = ['admin', 'manager', 'sales', 'basic'] as const;
 
 export type Role = (typeof ROLES)[number];
 
 export const ROLE_LABELS: Record<Role, string> = {
   admin: 'Administrador',
   manager: 'Manager',
+  sales: 'Vendedor',
   basic: 'Básico',
 };
 
@@ -12,7 +13,8 @@ export const ROLE_LABELS: Record<Role, string> = {
 export const ROLE_DESCRIPTIONS: Record<Role, string> = {
   admin: 'Acceso total: panel, cartera, gastos, pagos, servicios y usuarios.',
   manager: 'Registra ventas y gastos del día, anula ventas y cobra cartera.',
-  basic: 'Registra ventas y ve solo sus ventas y comisiones.',
+  sales: 'Registra ventas y ve el historial de todas las ventas.',
+  basic: 'Ve solo sus propias ventas en el historial y sus comisiones.',
 };
 
 export function isRole(value: unknown): value is Role {
@@ -33,14 +35,25 @@ export function dashboardAccess(role: Role): DashboardAccess {
       return 'full';
     case 'manager':
       return 'today-summary';
+    case 'sales':
     case 'basic':
       return 'none';
   }
 }
 
-/** Admin y manager ven el historial de todos; basic solo el suyo. */
+/** Nueva Venta: todos menos basic (basic solo consulta sus ventas y comisiones). */
+export function canRegisterSales(role: Role): boolean {
+  return role !== 'basic';
+}
+
+/** Admin, manager y vendedor ven el historial de todos; basic solo el suyo. */
 export function canSeeAllSales(role: Role): boolean {
-  return role === 'admin' || role === 'manager';
+  return role === 'admin' || role === 'manager' || role === 'sales';
+}
+
+/** El vendedor ve todas las ventas, pero no cuánto se gana cada uno: comisiones solo para admin y manager (y basic las suyas). */
+export function canSeeSaleCommissions(role: Role): boolean {
+  return role !== 'sales';
 }
 
 /** Solo admin y manager pueden anular ventas. */
@@ -76,7 +89,7 @@ export function canVoidExpense(role: Role, isFromToday: boolean): boolean {
   return role === 'admin' || (role === 'manager' && isFromToday);
 }
 
-/** Catálogo de servicios (agregar, renombrar, borrar, accesos rápidos): solo el administrador. */
+/** Servicios y Clientes (catálogo de servicios y clientes registrados): solo el administrador. */
 export function canManageServices(role: Role): boolean {
   return role === 'admin';
 }
@@ -84,6 +97,11 @@ export function canManageServices(role: Role): boolean {
 /** Usuarios y Roles (agregar, eliminar y cambiar el rol de los empleados): solo el administrador. */
 export function canManageUsers(role: Role): boolean {
   return role === 'admin';
+}
+
+/** Pagos Vendedores: todos menos el vendedor (rol sales), que solo vende y consulta el historial. */
+export function canAccessPayouts(role: Role): boolean {
+  return role !== 'sales';
 }
 
 /** Pagos a vendedores: admin y manager eligen a cualquier empleado; basic solo ve lo suyo. */
@@ -101,7 +119,14 @@ export function canMarkPayoutPaid(role: Role): boolean {
   return role === 'admin';
 }
 
-/** Página de inicio después del login: basic no tiene panel principal, entra directo a ventas. */
+/** Página de inicio después del login: el vendedor entra a ventas y basic a su historial (no tienen panel). */
 export function homeFor(role: Role): string {
-  return role === 'basic' ? '/html/ventas.html' : '/html/panel.html';
+  switch (role) {
+    case 'sales':
+      return '/html/ventas.html';
+    case 'basic':
+      return '/html/historial.html';
+    default:
+      return '/html/panel.html';
+  }
 }

@@ -15,8 +15,8 @@ export interface NavItem {
 
 export const NAV_ITEMS: readonly NavItem[] = [
   { id: 'panel', label: 'Panel Principal', icon: 'speed', href: '/html/panel.html', roles: ['admin', 'manager'] },
-  { id: 'ventas', label: 'Nueva Venta', icon: 'point_of_sale', href: '/html/ventas.html', roles: ['admin', 'manager', 'basic'] },
-  { id: 'historial', label: 'Historial', icon: 'history', href: '/html/historial.html', roles: ['admin', 'manager', 'basic'] },
+  { id: 'ventas', label: 'Nueva Venta', icon: 'point_of_sale', href: '/html/ventas.html', roles: ['admin', 'manager', 'sales'] },
+  { id: 'historial', label: 'Historial', icon: 'history', href: '/html/historial.html', roles: ['admin', 'manager', 'sales', 'basic'] },
   { id: 'cartera', label: 'Cartera', icon: 'account_balance_wallet', href: '/html/cartera.html', roles: ['admin', 'manager'] },
   { id: 'gastos', label: 'Gastos', icon: 'receipt_long', href: '/html/gastos.html', roles: ['admin', 'manager'] },
   {
@@ -27,7 +27,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     roles: ['admin', 'manager', 'basic'],
     badge: { text: 'Sábado', variant: 'info' },
   },
-  { id: 'servicios', label: 'Servicios', icon: 'minor_crash', href: '/html/servicios.html', roles: ['admin'] },
+  { id: 'servicios', label: 'Servicios y Clientes', icon: 'minor_crash', href: '/html/servicios.html', roles: ['admin'] },
   { id: 'usuarios', label: 'Usuarios y Roles', icon: 'admin_panel_settings', href: '/html/usuarios.html', roles: ['admin'] },
 ];
 

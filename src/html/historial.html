@@ -18,7 +18,7 @@
 
         <!-- Filtros -->
         <form id="filters" role="search" class="bg-surface-container-low rounded-xl p-space-md shadow-sm grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-12 gap-space-sm items-end">
-          <div class="xl:col-span-4">
+          <div class="xl:col-span-2">
             <label for="filter-search" class="block font-label-sm text-label-sm text-outline mb-1">Placa o cédula/NIT</label>
             <div class="relative">
               <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px] pointer-events-none" aria-hidden="true">search</span>
@@ -49,6 +49,15 @@
               <option value="void">Anulada</option>
             </select>
           </div>
+          <div class="xl:col-span-2">
+            <label for="filter-payment" class="block font-label-sm text-label-sm text-outline mb-1">Forma de pago</label>
+            <select id="filter-payment" class="w-full h-10 px-space-sm bg-surface-container rounded-lg focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer">
+              <option value="">Todas</option>
+              <option value="cash">Efectivo</option>
+              <option value="transfer">Transferencia</option>
+              <option value="credit">Crédito</option>
+            </select>
+          </div>
           <div class="sm:col-span-2 xl:col-span-12 flex flex-wrap items-center justify-between gap-space-sm">
             <p id="filter-note" class="font-body-sm text-body-sm text-outline"></p>
             <div class="flex gap-space-xs">
@@ -75,7 +84,7 @@
             <p class="font-label-sm text-label-sm text-outline">Por cobrar</p>
             <p id="summary-pending" data-skeleton class="font-headline-md text-headline-md font-bold text-tertiary">—</p>
           </div>
-          <div class="bg-surface-container rounded-xl p-space-md">
+          <div id="summary-commission-card" class="bg-surface-container rounded-xl p-space-md">
             <p id="summary-commission-label" class="font-label-sm text-label-sm text-outline">Comisiones</p>
             <p id="summary-commission" data-skeleton class="font-headline-md text-headline-md font-bold text-secondary">—</p>
           </div>
@@ -149,7 +158,7 @@
         </dl>
 
         <div>
-          <h3 class="font-label-sm text-label-sm text-outline uppercase tracking-wider mb-space-xs">Vendedores y comisión (<span id="detail-rate"></span>)</h3>
+          <h3 class="font-label-sm text-label-sm text-outline uppercase tracking-wider mb-space-xs">Vendedores<span id="detail-rate-wrapper"> y comisión (<span id="detail-rate"></span>)</span></h3>
           <ul id="detail-sellers" class="flex flex-col gap-1"></ul>
         </div>
 

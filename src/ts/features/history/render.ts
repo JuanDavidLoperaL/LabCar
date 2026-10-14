@@ -78,7 +78,8 @@ export function renderSummary(sales: readonly Sale[], commissionOf: string | nul
     'summary-pending',
     formatCOP(valid.filter((sale) => sale.status === 'pending').reduce((total, sale) => total + sale.total, 0)),
   );
-  setText('summary-commission', formatCOP(commission));
+  // El vendedor (rol sales) no tiene la tarjeta de comisiones.
+  if (document.getElementById('summary-commission')) setText('summary-commission', formatCOP(commission));
 }
 
 /** "Pagado el 10 oct, 3:15 p. m. · Transferencia · registró Juan" o "Pendiente (en cartera)". */
@@ -88,7 +89,8 @@ function creditPaymentLabel(sale: Sale): string {
   return `Pagado el ${formatShortDateTime(at)} · ${PAYMENT_METHOD_LABELS[method]} · registró ${by.name || by.email}`;
 }
 
-export function renderDetail(sale: Sale): void {
+/** `showCommissions` = false para el vendedor (rol sales): ve quién vendió, no cuánto ganó cada uno. */
+export function renderDetail(sale: Sale, showCommissions: boolean): void {
   setText('detail-title', `Venta ${sale.id}`);
   setText('detail-date', formatShortDateTime(sale.date));
   const status = byId('detail-status');
@@ -122,12 +124,13 @@ export function renderDetail(sale: Sale): void {
   const invoiceExtra = sale.invoice.number ? ` · N.º ${sale.invoice.number}` : sale.invoice.error ? ` · ${sale.invoice.error}` : '';
   setText('detail-invoice', `${INVOICE_STATUS_LABELS[sale.invoice.status]}${invoiceExtra}`);
 
+  byId('detail-rate-wrapper').hidden = !showCommissions;
   setText('detail-rate', `${Math.round(sale.commissionRate * 100)}%`);
   byId('detail-sellers').replaceChildren(
     ...sale.sellers.map((seller) => {
       const row = cloneTemplate<HTMLLIElement>('tpl-detail-seller');
       setField(row, 'name', seller.name);
-      setField(row, 'commission', formatCOP(seller.commission));
+      setField(row, 'commission', showCommissions ? formatCOP(seller.commission) : '');
       return row;
     }),
   );

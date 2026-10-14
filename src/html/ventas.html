@@ -10,6 +10,13 @@
   <!-- "invisible" evita mostrar la página antes de validar la sesión -->
   <body class="invisible bg-surface font-body-md text-body-md text-on-surface antialiased min-h-screen">
     <main class="relative bg-surface w-full px-gutter-mobile lg:px-gutter pt-space-lg pb-space-xl">
+      <!-- Sin acceso para este rol -->
+      <section id="no-access" hidden class="flex flex-col items-center justify-center text-center gap-space-sm py-24">
+        <span class="material-symbols-outlined text-[48px] text-outline" aria-hidden="true">lock</span>
+        <h1 class="font-headline-md text-headline-md">Nueva Venta no está disponible para tu rol</h1>
+        <p class="text-on-surface-variant max-w-md">Usa el menú para ir a los módulos habilitados para ti. Si necesitas más acceso, habla con el administrador.</p>
+      </section>
+
       <!-- Error al cargar -->
       <section id="load-error" hidden class="flex flex-col items-center justify-center text-center gap-space-sm py-24">
         <span class="material-symbols-outlined text-[48px] text-tertiary" aria-hidden="true">cloud_off</span>
@@ -198,6 +205,23 @@
                 <h2 id="step-customer" class="font-label-lg text-label-lg uppercase tracking-wider">Datos del Cliente</h2>
               </div>
               <p id="customer-reason" class="font-body-sm text-body-sm text-on-surface-variant mb-space-md"></p>
+
+              <!-- Preseleccionar un cliente registrado en Servicios y Clientes (llena los campos; se pueden editar) -->
+              <div id="customer-picker" hidden class="mb-space-md">
+                <label for="customer-pick" class="block font-label-sm text-label-sm text-outline mb-1">Preseleccionar cliente</label>
+                <div class="relative">
+                  <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-primary text-[20px] pointer-events-none" aria-hidden="true">person_search</span>
+                  <input id="customer-pick" type="search" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="customer-pick-results" aria-autocomplete="list"
+                    placeholder="Buscar cliente registrado por nombre o cédula/NIT…"
+                    class="w-full h-11 bg-surface-container-lowest pl-10 pr-space-md rounded-xl focus:outline-none focus:ring-2 focus:ring-primary placeholder:text-outline/50 shadow-inner" />
+                  <ul id="customer-pick-results" role="listbox" hidden
+                    class="absolute z-20 left-0 right-0 mt-1 max-h-72 overflow-y-auto bg-surface-container-high rounded-xl shadow-2xl p-1"></ul>
+                </div>
+                <p id="customer-picked" hidden class="mt-1 font-body-sm text-body-sm text-secondary flex items-start gap-1">
+                  <span class="material-symbols-outlined text-[16px]" aria-hidden="true">check_circle</span>
+                  <span id="customer-picked-text"></span>
+                </p>
+              </div>
 
               <div data-invoice-only class="flex flex-wrap items-center gap-x-space-lg gap-y-space-xs bg-surface-container px-space-md py-2.5 rounded-lg mb-space-sm">
                 <span class="font-label-sm text-label-sm text-outline uppercase tracking-wider">Tipo de persona</span>
@@ -403,6 +427,16 @@
       <li role="option" class="flex items-center gap-space-sm px-space-sm py-2 rounded-lg cursor-pointer hover:bg-surface-bright aria-selected:bg-surface-bright">
         <span data-field="initials" class="w-7 h-7 rounded-full bg-surface-container-highest text-secondary font-label-sm text-label-sm font-bold flex items-center justify-center"></span>
         <span data-field="name"></span>
+      </li>
+    </template>
+
+    <template id="tpl-customer-option">
+      <li role="option" class="flex items-center gap-space-sm px-space-sm py-2 rounded-lg cursor-pointer hover:bg-surface-bright aria-selected:bg-surface-bright">
+        <span data-field="initials" class="w-7 h-7 shrink-0 rounded-full bg-surface-container-highest text-secondary font-label-sm text-label-sm font-bold flex items-center justify-center"></span>
+        <span class="min-w-0 flex flex-col">
+          <span data-field="name" class="truncate"></span>
+          <span data-field="document" class="font-body-sm text-body-sm text-outline font-mono"></span>
+        </span>
       </li>
     </template>
 

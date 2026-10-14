@@ -21,7 +21,7 @@ import {
 import { payoutWeek, type PayoutWeek } from '../features/payouts/week';
 import { requireSession, type SessionUser } from '../lib/auth';
 import { firestoreErrorMessage } from '../lib/errors';
-import { canMarkPayoutPaid, canSeeAllPayouts, canSeeCompanyShare, ROLE_LABELS } from '../lib/roles';
+import { canAccessPayouts, canMarkPayoutPaid, canSeeAllPayouts, canSeeCompanyShare, ROLE_LABELS } from '../lib/roles';
 import type { EmployeeInfo } from '../models/user';
 import { byId } from '../ui/dom';
 import { mountShell } from '../ui/shell';
@@ -61,6 +61,10 @@ async function main(session: SessionUser): Promise<void> {
   const email = session.user.email?.toLowerCase() ?? '';
   const name = session.profile.name || session.user.displayName || email;
   const self: Employee = { email, name, role };
+  if (!canAccessPayouts(role)) {
+    byId('no-access').hidden = false;
+    return;
+  }
   const isAdmin = canSeeCompanyShare(role);
   const seesAll = canSeeAllPayouts(role);
 

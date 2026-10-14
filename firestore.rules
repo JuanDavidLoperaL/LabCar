@@ -15,18 +15,24 @@ service cloud.firestore {
       return sessionEmail().matches('.*@usuarios[.]labcar[.]local$');
     }
 
-    // Exige correo verificado (Google siempre lo está) para que nadie pueda
-    // registrarse con el correo de otra persona y heredar su perfil.
     function signedIn() {
-      return request.auth != null
-        && request.auth.token.email != null
-        && (request.auth.token.email_verified == true || isInternalAccount());
+      return request.auth != null && request.auth.token.email != null;
+    }
+
+    // El perfil le pertenece a quien inició sesión. Se exige correo verificado (Google siempre lo
+    // está) para que nadie pueda registrarse con el correo de otra persona y heredar su perfil.
+    // Excepción: cuentas con contraseña que creó el administrador (access == 'password'): si alguien
+    // hubiera creado antes una cuenta con ese correo, el administrador no habría podido crearla.
+    function ownsProfile(profile) {
+      return request.auth.token.email_verified == true
+        || isInternalAccount()
+        || profile.get('access', '') == 'password';
     }
 
     // Perfil activo con uno de los roles indicados (admin | manager | basic).
     function hasRole(roles) {
       let profile = get(/databases/$(database)/documents/users/$(sessionEmail())).data;
-      return signedIn() && profile.active == true && profile.role in roles;
+      return signedIn() && ownsProfile(profile) && profile.active == true && profile.role in roles;
     }
 
     function isMember() {
@@ -236,22 +242,56 @@ service cloud.firestore {
       return name is string && name.size() >= 2 && name.size() <= 60;
     }
 
+    // Perfil que guarda el administrador desde Usuarios y Roles. Nunca el suyo propio: así no puede
+    // quitarse el rol de admin ni eliminarse por error y dejar el sistema sin administrador.
+    function isValidUserProfile(email) {
+      let d = request.resource.data;
+      return email != sessionEmail()
+        && d.name is string && d.name.size() >= 1 && d.name.size() <= 100
+        && d.role in ['admin', 'manager', 'basic']
+        && d.get('access', 'google') in ['google', 'password']
+        && d.active is bool
+        && d.updatedAt == request.time
+        && d.updatedBy == sessionEmail();
+    }
+
+    function isValidContactField(value) {
+      return value is string && value.matches('^[0-9]{0,15}$');
+    }
+
     // ---------- Usuarios ----------
     // ID = correo en minúsculas (usuarios sin correo: usuario@usuarios.labcar.local).
     // Todo el equipo puede ver la lista: son los vendedores que se eligen en cada venta.
+    // access: 'google' (entra con Google) | 'password' (cuenta con contraseña que creó el admin).
+    // Solo el admin agrega, cambia el rol y elimina (active = false). No se borran: las ventas
+    // y los pagos de comisiones los siguen nombrando.
     match /users/{email} {
-      allow get: if signedIn() && (sessionEmail() == email || isMember());
+      allow get: if signedIn() && ((sessionEmail() == email && (resource == null || ownsProfile(resource.data))) || isMember());
       allow list: if isMember();
-      allow write: if false;
+      allow create: if hasRole(['admin'])
+        && email == email.lower()
+        && email.matches('^[^@\\s]+@[^@\\s]+$')
+        && request.resource.data.keys().hasOnly(['name', 'role', 'access', 'active', 'updatedAt', 'updatedBy'])
+        && request.resource.data.active == true
+        && isValidUserProfile(email);
+      allow update: if hasRole(['admin'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'role', 'access', 'active', 'updatedAt', 'updatedBy'])
+        && isValidUserProfile(email);
+      allow delete: if false;
     }
 
     // ---------- Datos de contacto de los empleados ----------
     // Cédula y teléfono (ID = correo). Van aparte de users/ porque users/ lo lee todo el equipo.
-    // Se cargan con scripts/employee.ts hasta que exista el módulo de Usuarios y Roles.
+    // El admin los registra al agregar un usuario (o con scripts/employee.ts).
     match /employees/{email} {
       allow get: if hasRole(['admin', 'manager']) || (isMember() && sessionEmail() == email);
       allow list: if hasRole(['admin', 'manager']);
-      allow write: if false;
+      allow create, update: if hasRole(['admin'])
+        && existsAfter(/databases/$(database)/documents/users/$(email))
+        && request.resource.data.keys().hasOnly(['documentNumber', 'phone'])
+        && isValidContactField(request.resource.data.get('documentNumber', ''))
+        && isValidContactField(request.resource.data.get('phone', ''));
+      allow delete: if false;
     }
 
     // ---------- Catálogo y configuración ----------

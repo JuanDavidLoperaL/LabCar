@@ -1,5 +1,6 @@
 import {
   browserLocalPersistence,
+  createUserWithEmailAndPassword,
   browserSessionPersistence,
   GoogleAuthProvider,
   sendPasswordResetEmail,
@@ -11,7 +12,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { FirebaseError } from 'firebase/app';
-import { getDb, getFirebaseAuth } from './firebase';
+import { getAccountsAuth, getDb, getFirebaseAuth } from './firebase';
 import { isRole, type Role } from './roles';
 
 export const ROUTES = {
@@ -24,10 +25,14 @@ export const ROUTES = {
  */
 export const USERNAME_DOMAIN = 'usuarios.labcar.local';
 
+/** Cómo entra un empleado: con Google o con contraseña (cuenta creada por el administrador). */
+export type AccessType = 'google' | 'password';
+
 /** Perfil del sistema guardado en Firestore: users/{correo}. Solo quien tenga perfil activo puede entrar. */
 export interface UserProfile {
   name: string;
   role: Role;
+  access: AccessType;
   active: boolean;
 }
 
@@ -36,6 +41,7 @@ function parseProfile(data: Record<string, unknown>): UserProfile {
   return {
     name: typeof data.name === 'string' ? data.name : '',
     role: isRole(data.role) ? data.role : 'basic',
+    access: data.access === 'password' ? 'password' : 'google',
     active: data.active === true,
   };
 }
@@ -70,16 +76,53 @@ export function setRememberSession(remember: boolean): Promise<void> {
   return setPersistence(getFirebaseAuth(), remember ? browserLocalPersistence : browserSessionPersistence);
 }
 
-function isInternalAccount(email: string): boolean {
+export function isInternalAccount(email: string): boolean {
   return email.endsWith(`@${USERNAME_DOMAIN}`);
+}
+
+/** Lo que se le muestra a la persona: el usuario ("juan") o el correo. */
+export function displayIdentifier(email: string): string {
+  return isInternalAccount(email) ? email.slice(0, -USERNAME_DOMAIN.length - 1) : email;
+}
+
+/** La cuenta ya existe en Firebase Auth con otra contraseña: no se puede reutilizar. */
+class AccountExistsError extends Error {
+  constructor(email: string) {
+    super(
+      `Ya existe una cuenta de acceso para ${displayIdentifier(email)} con otra contraseña. ` +
+        'Escribe la contraseña que tenía, o borra esa cuenta en Firebase → Authentication y vuelve a intentarlo.',
+    );
+  }
+}
+
+/**
+ * Crea la cuenta con contraseña (Auth) de un empleado: con su correo o con usuario@usuarios.labcar.local.
+ * Solo la cuenta: el acceso lo da su perfil en users/, que guarda el administrador. Usa una conexión
+ * aparte para no cambiar la sesión del administrador.
+ *
+ * Si la cuenta ya existe (p. ej. se borró el perfil desde la consola de Firebase, pero no la cuenta),
+ * se reutiliza solo si la contraseña escrita es la suya: así se sabe que no la creó un extraño.
+ */
+export async function createPasswordAccount(email: string, password: string): Promise<void> {
+  const auth = getAccountsAuth();
+  try {
+    await createUserWithEmailAndPassword(auth, email, password);
+  } catch (error) {
+    if (!(error instanceof FirebaseError && error.code === 'auth/email-already-in-use')) throw error;
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch {
+      throw new AccountExistsError(email);
+    }
+  }
+  await signOut(auth);
 }
 
 /** Verifica que el usuario autenticado tenga un perfil activo; si no, cierra la sesión. */
 async function authorize(user: User): Promise<SessionUser> {
   const email = user.email?.toLowerCase();
   let profile: UserProfile | undefined;
-  // Un correo sin verificar podría pertenecer a otra persona: no se le asigna el perfil.
-  if (email && (user.emailVerified || isInternalAccount(email))) {
+  if (email) {
     try {
       const snap = await getDoc(doc(getDb(), 'users', email));
       profile = snap.exists() ? parseProfile(snap.data()) : undefined;
@@ -88,7 +131,10 @@ async function authorize(user: User): Promise<SessionUser> {
       if (!(error instanceof FirebaseError && error.code === 'permission-denied')) throw error;
     }
   }
-  if (!profile?.active) {
+  // Un correo sin verificar podría pertenecer a otra persona: no se le asigna el perfil. Salvo las
+  // cuentas con contraseña que creó el administrador (nadie más pudo crear una con ese correo).
+  const ownsProfile = user.emailVerified || (email !== undefined && isInternalAccount(email)) || profile?.access === 'password';
+  if (!profile?.active || !ownsProfile) {
     await signOut(getFirebaseAuth());
     throw new NotAuthorizedError(email);
   }
@@ -140,7 +186,7 @@ export async function requireSession(): Promise<SessionUser> {
 }
 
 export function authErrorMessage(error: unknown): string {
-  if (error instanceof NotAuthorizedError) return error.message;
+  if (error instanceof NotAuthorizedError || error instanceof AccountExistsError) return error.message;
   if (!(error instanceof FirebaseError)) {
     return error instanceof Error ? error.message : 'Ocurrió un error inesperado.';
   }
@@ -165,6 +211,8 @@ export function authErrorMessage(error: unknown): string {
     case 'auth/configuration-not-found':
     case 'auth/operation-not-allowed':
       return 'Este método de inicio de sesión no está activado en Firebase.';
+    case 'auth/weak-password':
+      return 'La contraseña es muy débil: usa al menos 6 caracteres.';
     case 'auth/network-request-failed':
       return 'Sin conexión. Revisa tu internet.';
     default:

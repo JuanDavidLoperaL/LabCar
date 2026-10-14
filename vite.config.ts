@@ -25,6 +25,7 @@ export default defineConfig({
         gastos: resolve(src, 'html/gastos.html'),
         servicios: resolve(src, 'html/servicios.html'),
         pagosVendedores: resolve(src, 'html/pagos-vendedores.html'),
+        usuarios: resolve(src, 'html/usuarios.html'),
       },
     },
   },

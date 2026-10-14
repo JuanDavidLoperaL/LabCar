@@ -1,5 +1,5 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app';
-import { getAuth, type Auth } from 'firebase/auth';
+import { getAuth, inMemoryPersistence, initializeAuth, type Auth } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 
 const config = {
@@ -30,4 +30,19 @@ export function getFirebaseAuth(): Auth {
 
 export function getDb(): Firestore {
   return getFirestore(getFirebaseApp());
+}
+
+let accountsApp: FirebaseApp | undefined;
+
+/**
+ * Segunda conexión de Auth solo para crear cuentas de empleados. Crear una cuenta inicia sesión con
+ * ella; si se hiciera con la conexión principal, el administrador quedaría con la sesión del empleado.
+ * Va en memoria para que esa sesión no se guarde en el navegador.
+ */
+export function getAccountsAuth(): Auth {
+  if (!accountsApp) {
+    accountsApp = initializeApp(getFirebaseApp().options, 'accounts');
+    return initializeAuth(accountsApp, { persistence: inMemoryPersistence });
+  }
+  return getAuth(accountsApp);
 }

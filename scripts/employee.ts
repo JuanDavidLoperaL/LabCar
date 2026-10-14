@@ -1,6 +1,7 @@
 /**
- * Datos de contacto de un empleado (employees/{correo}) para Pagos Vendedores, mientras no exista
- * el módulo de Usuarios y Roles. El correo debe ser el de users/ (en minúsculas).
+ * Datos de contacto de un empleado (employees/{correo}) para Pagos Vendedores. Se registran al
+ * agregarlo en Usuarios y Roles; este script sirve para completarlos o corregirlos.
+ * El correo debe ser el de users/ (en minúsculas).
  *
  *   npm run employee:set -- <correo> --cedula 1036782901 --telefono 3148209942
  *   npm run employee:show -- <correo>

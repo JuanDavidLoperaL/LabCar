@@ -60,10 +60,17 @@ export function printThermalReceipt(sale: Sale): Promise<void> {
   inFlight ??= (async () => {
     const qz = await connect();
     const found = await qz.printers.find();
-    const printer = pickPrinter(Array.isArray(found) ? found : [found]);
+    const printers = (Array.isArray(found) ? found : [found]).filter(Boolean);
+    const printer = pickPrinter(printers);
     if (!printer) {
-      throw new ThermalPrintError('QZ Tray no encontró la impresora. Revisa que la Epson esté encendida, conectada por USB e instalada en Windows.');
+      // QZ Tray lee las impresoras de Windows al abrir: si la Epson se instaló con QZ Tray abierto, no la ve.
+      throw new ThermalPrintError(
+        printers.length === 0
+          ? 'QZ Tray no ve ninguna impresora. Cierra QZ Tray (clic derecho en su ícono → Exit), ábrelo de nuevo y vuelve a imprimir.'
+          : `QZ Tray no encontró la Epson. Impresoras que ve: ${printers.join(', ')}. Si la Epson se instaló hace poco, cierra QZ Tray (clic derecho → Exit) y ábrelo de nuevo.`,
+      );
     }
+    console.info(`Imprimiendo en "${printer}" (impresoras disponibles: ${printers.join(', ')})`);
     const ticket = await buildReceiptTicket(sale);
     try {
       await qz.print(qz.configs.create(printer), [{ type: 'raw', format: 'base64', data: ticket }]);

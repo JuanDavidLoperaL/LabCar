@@ -1,3 +1,7 @@
+import { fetchSale } from '../../data/sales';
+import type { Sale } from '../../models/sale';
+import { printThermalReceipt, ThermalPrintError } from './thermal';
+
 /** Mensajes que el recibo (dentro de un iframe) le envía a la página que lo imprime. */
 export const RECEIPT_MESSAGES = { printed: 'labcar:receipt-printed', failed: 'labcar:receipt-failed' } as const;
 
@@ -19,10 +23,11 @@ function isIOS(): boolean {
 let inFlight: Promise<PrintOutcome> | null = null;
 
 /**
- * Imprime el recibo de una venta sin salir de la página: lo carga en un iframe oculto que abre
- * el diálogo de impresión. Si ya hay una impresión en curso, devuelve esa misma (no abre dos diálogos).
+ * Respaldo cuando la impresora térmica (QZ Tray) falla: imprime el recibo HTML con el diálogo del
+ * navegador, sin salir de la página. Lo carga en un iframe oculto que abre el diálogo de impresión.
+ * Si ya hay una impresión en curso, devuelve esa misma (no abre dos diálogos).
  */
-export function printReceipt(saleId: string): Promise<PrintOutcome> {
+export function printReceiptInBrowser(saleId: string): Promise<PrintOutcome> {
   if (isIOS()) {
     const opened = window.open(receiptUrl(saleId, false), '_blank', 'noopener');
     return opened === null ? Promise.reject(new Error('El navegador bloqueó la ventana del recibo.')) : Promise.resolve('opened');
@@ -53,4 +58,15 @@ export function printReceipt(saleId: string): Promise<PrintOutcome> {
     document.body.append(frame);
   });
   return inFlight;
+}
+
+/**
+ * Imprime la tirilla directo en la impresora térmica con QZ Tray (sin diálogo).
+ * Recibe la venta, o su ID para leerla de Firestore (ej. justo después de registrarla).
+ * Si falla, lanza un error con mensaje para mostrar (ver thermalErrorMessage).
+ */
+export async function printReceipt(saleOrId: Sale | string): Promise<void> {
+  const sale = typeof saleOrId === 'string' ? await fetchSale(saleOrId) : saleOrId;
+  if (!sale) throw new ThermalPrintError('No se encontró la venta para imprimir.');
+  await printThermalReceipt(sale);
 }

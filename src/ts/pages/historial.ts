@@ -4,7 +4,8 @@ import { fetchActiveUsers } from '../data/users';
 import { renderDetail, renderRows, renderSummary } from '../features/history/render';
 import { searchHistory, type HistoryFilters } from '../features/history/search';
 import { whatsappUrl } from '../features/receipt/content';
-import { printReceipt } from '../features/receipt/print';
+import { printReceipt, printReceiptInBrowser } from '../features/receipt/print';
+import { thermalErrorMessage } from '../features/receipt/thermal';
 import { requireSession, type SessionUser } from '../lib/auth';
 import { firestoreErrorMessage } from '../lib/errors';
 import { periodRange, rangeFromDateInputs, toDateInputValue } from '../lib/dates';
@@ -64,6 +65,7 @@ async function main(session: SessionUser): Promise<void> {
     byId<HTMLAnchorElement>('detail-whatsapp').href = whatsappUrl(sale);
     byId('btn-void').hidden = !canVoid || sale.status === 'void';
     byId('void-form').hidden = true;
+    byId('btn-reprint-browser').hidden = true;
     if (!dialog.open) dialog.showModal();
   }
 
@@ -71,8 +73,25 @@ async function main(session: SessionUser): Promise<void> {
   dialog.addEventListener('click', (event) => {
     if (event.target === dialog) dialog.close(); // clic en el fondo
   });
-  byId('btn-reprint').addEventListener('click', () => {
-    if (current) printReceipt(current.id).catch(() => showToast('No se pudo imprimir el recibo.', 'error'));
+  // Reimprimir en la térmica (QZ Tray); si falla, aparece el respaldo con el diálogo del navegador.
+  const reprintBtn = byId<HTMLButtonElement>('btn-reprint');
+  const browserReprintBtn = byId<HTMLButtonElement>('btn-reprint-browser');
+  reprintBtn.addEventListener('click', async () => {
+    if (!current) return;
+    reprintBtn.disabled = true;
+    try {
+      await printReceipt(current);
+      showToast(`Tirilla de la venta ${current.id} impresa.`, 'print');
+    } catch (error) {
+      console.error(error);
+      showToast(thermalErrorMessage(error), 'error');
+      browserReprintBtn.hidden = false;
+    } finally {
+      reprintBtn.disabled = false;
+    }
+  });
+  browserReprintBtn.addEventListener('click', () => {
+    if (current) printReceiptInBrowser(current.id).catch(() => showToast('No se pudo abrir el recibo.', 'error'));
   });
 
   // ---------- Anulación (admin y manager) ----------

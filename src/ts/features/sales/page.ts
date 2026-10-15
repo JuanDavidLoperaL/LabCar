@@ -2,7 +2,8 @@ import { BUSINESS } from '../../config/business';
 import { createSale, type NewSale } from '../../data/sales';
 import { errorCode, firestoreErrorMessage } from '../../lib/errors';
 import { businessNit, whatsappUrl } from '../receipt/content';
-import { printReceipt } from '../receipt/print';
+import { printReceipt, printReceiptInBrowser } from '../receipt/print';
+import { thermalErrorMessage } from '../receipt/thermal';
 import { createCustomerPicker } from './customer-picker';
 import { createItemsEditor } from './items-editor';
 import { maskPlate, MASKED_PLATE_LENGTH, normalizePlate, OTHER_PLATE_LENGTH, PLATE_HINTS } from './plate';
@@ -403,7 +404,27 @@ export function mountSalePage(session: SessionUser, { users, services, commissio
       ? 'La factura electrónica quedó pendiente y se enviará a la DIAN cuando la integración con Siigo esté activa.'
       : 'Se registró sin factura electrónica.';
     byId<HTMLAnchorElement>('btn-history').href = `/html/historial.html?venta=${encodeURIComponent(saleId)}`;
-    byId('btn-print').addEventListener('click', () => void printReceipt(saleId).catch(() => showToast('No se pudo imprimir.', 'error')));
+    // Imprimir en la térmica (QZ Tray); si falla, aparece el respaldo con el diálogo del navegador.
+    const printBtn = byId<HTMLButtonElement>('btn-print');
+    const browserPrintBtn = byId<HTMLButtonElement>('btn-print-browser');
+    const printThermal = async (): Promise<void> => {
+      setStep('print', 'active', 'Enviando a la impresora…');
+      printBtn.disabled = true;
+      try {
+        await printReceipt(saleId);
+        setStep('print', 'done', 'Tirilla impresa');
+      } catch (error) {
+        console.error(error);
+        const message = thermalErrorMessage(error);
+        setStep('print', 'error', message);
+        showToast(message, 'error');
+        browserPrintBtn.hidden = false;
+      } finally {
+        printBtn.disabled = false;
+      }
+    };
+    printBtn.addEventListener('click', () => void printThermal());
+    browserPrintBtn.addEventListener('click', () => void printReceiptInBrowser(saleId).catch(() => showToast('No se pudo abrir el recibo.', 'error')));
     byId('btn-new-sale').addEventListener('click', () => window.location.reload());
     const totals = computeSaleTotals(sale.items, sale.sellers, sale.commissionRate);
     byId<HTMLAnchorElement>('btn-whatsapp').href = whatsappUrl({
@@ -424,18 +445,7 @@ export function mountSalePage(session: SessionUser, { users, services, commissio
     successCard.focus({ preventScroll: true });
     successCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
-    setStep('print', 'active', 'Abriendo la impresión…');
-    try {
-      const outcome = await printReceipt(saleId);
-      setStep(
-        'print',
-        'done',
-        outcome === 'opened' ? 'Recibo abierto en otra pestaña para imprimir' : 'Diálogo de impresión cerrado',
-      );
-    } catch (error) {
-      console.error(error);
-      setStep('print', 'error', 'No se pudo imprimir. Usa el botón "Imprimir tirilla".');
-    }
+    await printThermal();
   }
 
   // Enter dentro de un campo no registra la venta: solo el botón "Registrar venta".

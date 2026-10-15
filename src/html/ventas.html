@@ -396,8 +396,13 @@
                   <span class="material-symbols-outlined text-[20px]" aria-hidden="true">chat</span>Enviar por WhatsApp
                 </a>
                 <button id="btn-print" type="button"
-                  class="w-full py-2.5 px-space-md bg-surface-container hover:bg-surface-container-highest rounded-xl font-label-md text-label-md font-semibold flex items-center justify-center gap-space-xs transition-colors">
-                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true">print</span>Imprimir tirilla (80 mm)
+                  class="disabled:opacity-60 disabled:cursor-wait w-full py-2.5 px-space-md bg-surface-container hover:bg-surface-container-highest rounded-xl font-label-md text-label-md font-semibold flex items-center justify-center gap-space-xs transition-colors">
+                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true">print</span>Imprimir tirilla
+                </button>
+                <!-- Respaldo: solo aparece si la impresora térmica (QZ Tray) falla -->
+                <button id="btn-print-browser" type="button" hidden
+                  class="w-full py-2.5 px-space-md bg-surface-container hover:bg-surface-container-highest rounded-xl font-label-md text-label-md font-semibold flex items-center justify-center gap-space-xs transition-colors text-tertiary">
+                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true">print_error</span>Imprimir con el navegador
                 </button>
                 <a id="btn-history" href="/html/historial.html"
                   class="w-full py-2.5 px-space-md bg-surface-container hover:bg-surface-container-highest rounded-xl font-label-md text-label-md font-semibold flex items-center justify-center gap-space-xs transition-colors">

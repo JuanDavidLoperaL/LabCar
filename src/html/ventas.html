@@ -26,6 +26,16 @@
       </section>
 
       <form id="sale-form" hidden novalidate>
+        <!-- Tope mensual de facturación electrónica superado: solo avisa, no bloquea -->
+        <div id="invoice-limit-alert" role="status" hidden
+          class="mb-space-lg rounded-xl border border-error/40 bg-error-container/20 text-on-surface p-space-md flex items-start gap-space-sm">
+          <span class="material-symbols-outlined text-error text-[24px]" aria-hidden="true">warning</span>
+          <div class="flex flex-col gap-0.5">
+            <p class="font-label-lg text-label-lg font-semibold text-error">Ya se superó el límite de facturación electrónica</p>
+            <p id="invoice-limit-alert-text" class="font-body-sm text-body-sm text-on-surface-variant"></p>
+          </div>
+        </div>
+
         <!-- Encabezado -->
         <div class="bg-surface-container-low rounded-xl p-space-md mb-space-lg shadow-md flex items-center gap-space-sm">
           <span class="w-10 h-10 rounded-xl bg-primary-container/20 flex items-center justify-center text-primary">

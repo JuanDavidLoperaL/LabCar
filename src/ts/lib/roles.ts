@@ -71,6 +71,11 @@ export function canEditOverdueDays(role: Role): boolean {
   return role === 'admin';
 }
 
+/** Solo el administrador cambia el tope mensual de facturación electrónica (todos ven la alerta en Nueva Venta). */
+export function canEditInvoiceLimit(role: Role): boolean {
+  return role === 'admin';
+}
+
 /** Gastos: admin y manager registran; basic no tiene acceso. */
 export function canAccessExpenses(role: Role): boolean {
   return role === 'admin' || role === 'manager';

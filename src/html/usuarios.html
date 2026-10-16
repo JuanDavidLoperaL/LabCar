@@ -39,6 +39,24 @@
           </button>
         </div>
 
+        <!-- Tope mensual de facturación electrónica (solo el admin lo cambia) -->
+        <form id="invoice-limit-form" novalidate class="bg-surface-container-low p-space-md sm:p-space-lg rounded-xl border border-outline-variant/30 shadow-sm flex flex-col gap-space-sm">
+          <label for="invoice-limit" class="font-label-md text-label-md text-outline uppercase tracking-wider flex items-center gap-1">
+            <span class="material-symbols-outlined text-[18px]" aria-hidden="true">receipt_long</span>Máximo de facturación electrónica
+          </label>
+          <div class="flex flex-wrap items-center gap-space-sm">
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-outline font-headline-md text-headline-md pointer-events-none" aria-hidden="true">$</span>
+              <input id="invoice-limit" type="text" inputmode="numeric" autocomplete="off" aria-describedby="invoice-limit-help"
+                class="w-56 h-11 pl-8 pr-space-sm bg-surface-container rounded-lg font-headline-md text-headline-md focus:outline-none focus:ring-1 focus:ring-primary" />
+            </div>
+            <span class="text-on-surface-variant">al mes</span>
+            <button id="btn-save-invoice-limit" type="submit" disabled
+              class="ml-auto px-space-md h-10 rounded-lg bg-primary-container text-on-primary-container font-label-md text-label-md font-semibold disabled:opacity-50">Guardar</button>
+          </div>
+          <p id="invoice-limit-help" class="font-body-sm text-body-sm text-outline"></p>
+        </form>
+
         <!-- Búsqueda y filtro por rol -->
         <section aria-label="Buscar usuario" class="bg-surface-container-low p-space-md rounded-xl flex flex-col lg:flex-row gap-space-md items-stretch lg:items-center justify-between shadow-sm">
           <div class="relative flex-1 min-w-0">

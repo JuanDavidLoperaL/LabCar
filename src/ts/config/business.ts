@@ -30,6 +30,13 @@ export const DEFAULT_OVERDUE_DAYS = 30;
 export const MIN_OVERDUE_DAYS = 1;
 export const MAX_OVERDUE_DAYS = 365;
 
+/**
+ * Tope mensual de facturación electrónica, mientras el administrador no lo cambie (settings/invoicing).
+ * Al llegar al tope en el mes, Nueva Venta muestra una alerta; no impide seguir facturando.
+ */
+export const DEFAULT_INVOICE_MONTHLY_LIMIT = 6_000_000;
+export const MAX_INVOICE_MONTHLY_LIMIT = 10_000_000_000;
+
 /** Catálogo de servicios: largo del nombre y cuántos pueden ser accesos rápidos en Nueva Venta. */
 export const SERVICE_LIMITS = {
   nameMin: 2,

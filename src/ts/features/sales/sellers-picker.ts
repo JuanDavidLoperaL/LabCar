@@ -4,26 +4,25 @@ import type { AppUser } from '../../models/user';
 import { cloneTemplate, field, setField } from '../../ui/template';
 import { MAX_SELLERS } from './validation';
 
-const MAX_RESULTS = 8;
-
 export interface SellersPicker {
   selected(): AppUser[];
 }
 
 /**
  * Vendedores con buscador: escala a muchos empleados. Lo elegido se muestra como etiquetas
- * que se pueden quitar. El usuario que registra la venta queda seleccionado por defecto.
+ * que se pueden quitar. Empieza sin nadie: quien registra no siempre es quien vendió.
+ * La lista muestra a todos los que coinciden (con scroll), no solo los primeros.
  */
 export function createSellersPicker(elements: {
   search: HTMLInputElement;
   results: HTMLUListElement;
   selectedList: HTMLUListElement;
   users: readonly AppUser[];
-  defaultEmail: string;
   onChange: () => void;
 }): SellersPicker {
-  const { search, results, selectedList, users, defaultEmail, onChange } = elements;
-  const selected: AppUser[] = users.filter((user) => user.email === defaultEmail);
+  const { search, results, selectedList, onChange } = elements;
+  const users = [...elements.users].sort((a, b) => a.name.localeCompare(b.name, 'es'));
+  const selected: AppUser[] = [];
   let options: AppUser[] = [];
   let activeIndex = -1;
 
@@ -80,8 +79,7 @@ export function createSellersPicker(elements: {
     const words = searchKey(search.value).split(/\s+/).filter(Boolean);
     options = users
       .filter((user) => !selected.includes(user))
-      .filter((user) => words.every((word) => searchKey(user.name).includes(word)))
-      .slice(0, MAX_RESULTS);
+      .filter((user) => words.every((word) => searchKey(user.name).includes(word)));
 
     const items = options.map((user, index) => {
       const item = cloneTemplate<HTMLLIElement>('tpl-seller-option');

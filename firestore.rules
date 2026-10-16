@@ -178,6 +178,15 @@ service cloud.firestore {
         && d.updatedBy == sessionEmail();
     }
 
+    // Tope mensual de facturación electrónica (solo admin, desde Usuarios y Roles).
+    function isValidInvoicingSettings() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['monthlyLimit', 'updatedAt', 'updatedBy'])
+        && d.monthlyLimit is int && d.monthlyLimit >= 1 && d.monthlyLimit <= 10000000000
+        && d.updatedAt == request.time
+        && d.updatedBy == sessionEmail();
+    }
+
     // Pago de comisiones a un empleado (solo admin, desde Pagos Vendedores). ID = "{día del corte}_{correo}":
     // un pago por empleado y semana. Cubre las ventas del empleado con fecha en [coveredFrom, coveredTo).
     function isValidPayout(payoutId) {
@@ -349,7 +358,9 @@ service cloud.firestore {
 
     match /settings/{settingId} {
       allow read: if isMember();
-      allow create, update: if settingId == 'receivables' && hasRole(['admin']) && isValidReceivablesSettings();
+      allow create, update: if hasRole(['admin'])
+        && ((settingId == 'receivables' && isValidReceivablesSettings())
+          || (settingId == 'invoicing' && isValidInvoicingSettings()));
       allow delete: if false;
     }
 

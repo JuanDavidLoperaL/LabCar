@@ -3,6 +3,7 @@ import { fetchCustomers } from '../data/customers';
 import { fetchServices } from '../data/services';
 import { fetchCommissionRate } from '../data/settings';
 import { fetchActiveUsers } from '../data/users';
+import { mountInvoiceLimitAlert } from '../features/sales/invoice-limit';
 import { mountSalePage } from '../features/sales/page';
 import { requireSession } from '../lib/auth';
 import { canRegisterSales } from '../lib/roles';
@@ -36,6 +37,7 @@ async function main(): Promise<void> {
     }),
   ]);
   mountSalePage(session, { users, services, commissionRate, customers });
+  mountInvoiceLimitAlert();
 }
 
 main().catch((error: unknown) => {

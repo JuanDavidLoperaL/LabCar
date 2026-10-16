@@ -1,4 +1,6 @@
 import '../../css/main.css';
+import { DEFAULT_INVOICE_MONTHLY_LIMIT } from '../config/business';
+import { isValidInvoiceLimit, saveInvoiceLimit, watchInvoiceLimit } from '../data/settings';
 import { saveUserChanges, watchUsers } from '../data/users';
 import { describeChanges, PendingChanges } from '../features/users/changes';
 import { setupAddDialog } from '../features/users/add-dialog';
@@ -6,8 +8,9 @@ import { setupConfirmDialog } from '../features/users/confirm-dialog';
 import { renderUserList, type ListFilters } from '../features/users/list';
 import { requireSession, type SessionUser } from '../lib/auth';
 import { firestoreErrorMessage } from '../lib/errors';
-import { pluralize } from '../lib/format';
-import { canManageUsers, isRole } from '../lib/roles';
+import { formatCOP, pluralize } from '../lib/format';
+import { canEditInvoiceLimit, canManageUsers, isRole } from '../lib/roles';
+import { formatThousands, parsePesos } from '../lib/text';
 import type { ManagedUser } from '../models/user';
 import { byId } from '../ui/dom';
 import { mountShell } from '../ui/shell';
@@ -52,6 +55,59 @@ function main(session: SessionUser): void {
     byId('save-bar').hidden = changes.count === 0;
     byId('save-bar-text').textContent = `${pluralize(changes.count, 'cambio', 'cambios')} sin guardar`;
   }
+
+  // ---------- Tope mensual de facturación electrónica ----------
+
+  const limitInput = byId<HTMLInputElement>('invoice-limit');
+  const limitSaveBtn = byId<HTMLButtonElement>('btn-save-invoice-limit');
+  const limitHelp = byId('invoice-limit-help');
+  const canEditLimit = canEditInvoiceLimit(session.profile.role);
+  let invoiceLimit = DEFAULT_INVOICE_MONTHLY_LIMIT;
+  limitInput.readOnly = !canEditLimit;
+  limitSaveBtn.hidden = !canEditLimit;
+  const limitDefaultHelp =
+    'Suma de las ventas con factura electrónica del mes. Al llegar a este valor, Nueva Venta muestra una alerta a todos; se puede seguir facturando normal.';
+  limitHelp.textContent = limitDefaultHelp;
+
+  const showLimit = (amount: number) => (limitInput.value = formatThousands(amount));
+  const typedLimit = () => parsePesos(limitInput.value);
+  const limitDirty = () => typedLimit() !== invoiceLimit;
+  limitInput.addEventListener('input', () => {
+    showLimit(typedLimit());
+    const valid = isValidInvoiceLimit(typedLimit());
+    limitSaveBtn.disabled = !limitDirty() || !valid;
+    limitHelp.textContent = valid ? limitDefaultHelp : 'Escribe un valor mayor a cero.';
+  });
+  byId<HTMLFormElement>('invoice-limit-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const amount = typedLimit();
+    if (!canEditLimit || !isValidInvoiceLimit(amount) || !limitDirty()) return;
+    limitSaveBtn.disabled = true;
+    try {
+      await saveInvoiceLimit(amount, selfEmail);
+      showToast(`Máximo de facturación electrónica: ${formatCOP(amount)} al mes.`, 'check_circle');
+    } catch (error) {
+      console.error(error);
+      limitSaveBtn.disabled = false;
+      showToast(firestoreErrorMessage(error, 'guardar el máximo de facturación electrónica'), 'error');
+    }
+  });
+  watchInvoiceLimit(
+    (amount) => {
+      // Si el admin está escribiendo un valor sin guardar, no se le borra.
+      const editing = document.activeElement === limitInput && limitDirty();
+      invoiceLimit = amount;
+      if (!editing) {
+        showLimit(amount);
+        limitSaveBtn.disabled = true;
+      }
+    },
+    (error) => {
+      console.error(error);
+      showLimit(invoiceLimit);
+      showToast(firestoreErrorMessage(error, 'cargar el máximo de facturación electrónica'), 'warning');
+    },
+  );
 
   // ---------- Búsqueda y filtro ----------
 

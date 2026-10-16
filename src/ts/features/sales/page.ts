@@ -103,7 +103,6 @@ export function mountSalePage(session: SessionUser, { users, services, commissio
     results: byId<HTMLUListElement>('seller-results'),
     selectedList: byId<HTMLUListElement>('sellers-selected'),
     users,
-    defaultEmail: currentEmail,
     onChange: () => update(),
   });
   const items = createItemsEditor({

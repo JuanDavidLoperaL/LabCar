@@ -181,6 +181,11 @@ export function watchPendingSales(onChange: (sales: Sale[]) => void, onError: (e
   );
 }
 
+/** Ventas del rango en tiempo real (incluye anuladas). Una lectura por venta al abrir y luego solo las que cambien. */
+export function watchSales(range: DateRange, onChange: (sales: Sale[]) => void, onError: (error: unknown) => void): Unsubscribe {
+  return onSnapshot(query(salesCollection(), ...dateConstraints(range)), (snapshot) => onChange(toSales(snapshot.docs)), onError);
+}
+
 /** Ventas de un empleado en el rango (más recientes primero), para liquidar sus comisiones. Usa el índice sellerEmails + date. */
 export async function fetchSalesBySeller(email: string, range: DateRange): Promise<Sale[]> {
   const snapshot = await getDocs(

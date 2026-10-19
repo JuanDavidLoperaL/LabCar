@@ -17,7 +17,7 @@
         </div>
 
         <!-- Filtros -->
-        <form id="filters" role="search" class="bg-surface-container-low rounded-xl p-space-md shadow-sm grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-12 gap-space-sm items-end">
+        <form id="filters" role="search" class="bg-surface-container-low rounded-xl p-space-md shadow-sm grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-14 gap-space-sm items-end">
           <div class="xl:col-span-2">
             <label for="filter-search" class="block font-label-sm text-label-sm text-outline mb-1">Placa o cédula/NIT</label>
             <div class="relative">
@@ -58,7 +58,15 @@
               <option value="credit">Crédito</option>
             </select>
           </div>
-          <div class="sm:col-span-2 xl:col-span-12 flex flex-wrap items-center justify-between gap-space-sm">
+          <div class="xl:col-span-2">
+            <label for="filter-invoice" class="block font-label-sm text-label-sm text-outline mb-1">Factura electrónica</label>
+            <select id="filter-invoice" class="w-full h-10 px-space-sm bg-surface-container rounded-lg focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer">
+              <option value="">Todas</option>
+              <option value="with">Con factura electrónica</option>
+              <option value="without">Sin factura electrónica</option>
+            </select>
+          </div>
+          <div class="sm:col-span-2 xl:col-span-14 flex flex-wrap items-center justify-between gap-space-sm">
             <p id="filter-note" class="font-body-sm text-body-sm text-outline"></p>
             <div class="flex gap-space-xs">
               <button id="btn-clear-filters" type="button" class="px-space-md h-10 rounded-lg bg-surface-container-high hover:bg-surface-bright font-label-md text-label-md">Limpiar</button>
@@ -203,7 +211,7 @@
     </dialog>
 
     <template id="tpl-history-row">
-      <tr tabindex="0" class="cursor-pointer hover:bg-surface-container-high focus:bg-surface-container-high focus:outline-none transition-colors data-[status=void]:opacity-60 data-[status=pending]:bg-tertiary-container/5">
+      <tr tabindex="0" class="cursor-pointer hover:bg-surface-container-high focus:bg-surface-container-high focus:outline-none transition-colors data-[status=void]:opacity-60 data-[status=pending]:bg-tertiary-container/5 data-[invoiced=true]:[&>td:first-child]:shadow-[inset_3px_0_0_var(--color-green-400)]">
         <td data-field="order" class="px-space-md py-3 font-mono font-bold text-primary"></td>
         <td data-field="date" class="px-space-md py-3 text-on-surface-variant"></td>
         <td class="px-space-md py-3">
@@ -218,8 +226,16 @@
           <span data-field="status" class="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-surface-container-high text-secondary data-[status=pending]:bg-tertiary-container/30 data-[status=pending]:text-tertiary data-[status=void]:bg-error-container/40 data-[status=void]:text-error"></span>
         </td>
         <td class="px-space-md py-3 text-center">
-          <span data-field="invoice" class="material-symbols-outlined text-[18px] text-outline data-[invoice=pending]:text-secondary data-[invoice=issued]:text-green-400 data-[invoice=error]:text-error" aria-hidden="true"></span>
-          <span data-field="invoice-label" class="sr-only"></span>
+          <!-- Con factura electrónica: etiqueta "FE" de color; sin ella, un guion discreto -->
+          <span data-field="invoice-badge" data-invoice="not-requested"
+            class="inline-flex items-center gap-1 font-label-sm text-label-sm px-2 py-0.5 rounded-full text-outline
+              data-[invoice=issued]:bg-green-500/15 data-[invoice=issued]:text-green-400
+              data-[invoice=pending]:bg-secondary/15 data-[invoice=pending]:text-secondary
+              data-[invoice=error]:bg-error-container/40 data-[invoice=error]:text-error">
+            <span data-field="invoice" class="material-symbols-outlined text-[16px]" aria-hidden="true"></span>
+            <span data-field="invoice-short" aria-hidden="true"></span>
+            <span data-field="invoice-label" class="sr-only"></span>
+          </span>
         </td>
       </tr>
     </template>

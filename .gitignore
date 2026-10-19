@@ -6,3 +6,6 @@ dist/
 
 # Clave de cuenta de servicio de Firebase (acceso total al proyecto): nunca al repositorio
 service-account*.json
+
+# Respaldos de datos de producción (scripts/reset-sales.ts)
+backups/

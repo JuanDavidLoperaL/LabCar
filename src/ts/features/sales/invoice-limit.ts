@@ -1,7 +1,6 @@
 import { watchSales } from '../../data/sales';
 import { watchInvoiceLimit } from '../../data/settings';
 import { periodRange } from '../../lib/dates';
-import { formatCOP } from '../../lib/format';
 import type { Sale } from '../../models/sale';
 import { byId } from '../../ui/dom';
 
@@ -25,10 +24,10 @@ export function mountInvoiceLimitAlert(): void {
   function render(): void {
     const exceeded = limit !== null && invoiced !== null && invoiced >= limit;
     alert.hidden = !exceeded;
-    if (exceeded && limit !== null && invoiced !== null) {
+    // Sin montos: el cliente no quiere que el equipo vea cuánto se ha facturado ni el tope.
+    if (exceeded) {
       byId('invoice-limit-alert-text').textContent =
-        `Este mes ya se facturaron ${formatCOP(invoiced)} con factura electrónica y el máximo es ${formatCOP(limit)}. ` +
-        'Puedes seguir registrando ventas y facturando normalmente.';
+        'Este mes ya se llegó al máximo de facturación electrónica. Puedes seguir registrando ventas y facturando normalmente.';
     }
   }
 

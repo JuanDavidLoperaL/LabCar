@@ -9,6 +9,7 @@ import {
   type Sale,
 } from '../../models/sale';
 import { byId } from '../../ui/dom';
+import { hasElectronicInvoice } from './search';
 import { cloneTemplate, field, setField } from '../../ui/template';
 import { formatPlate } from '../sales/plate';
 import { itemsSummary, sellersSummary } from '../sales/summary';
@@ -38,10 +39,13 @@ export function renderRows(sales: readonly Sale[], onOpen: (sale: Sale) => void)
     setField(row, 'total', formatCOP(sale.total));
     setField(row, 'status', SALE_STATUS_LABELS[sale.status]);
     field(row, 'status').dataset.status = sale.status;
-    const invoice = field(row, 'invoice');
-    invoice.textContent = INVOICE_ICONS[sale.invoice.status];
-    invoice.dataset.invoice = sale.invoice.status;
-    invoice.parentElement!.title = INVOICE_STATUS_LABELS[sale.invoice.status];
+    row.dataset.invoiced = String(hasElectronicInvoice(sale));
+    const badge = field(row, 'invoice-badge');
+    badge.dataset.invoice = sale.invoice.status;
+    badge.parentElement!.title = INVOICE_STATUS_LABELS[sale.invoice.status];
+    setField(row, 'invoice', INVOICE_ICONS[sale.invoice.status]);
+    // "FE" junto al ícono: las ventas con factura electrónica se ven de un vistazo.
+    setField(row, 'invoice-short', hasElectronicInvoice(sale) ? 'FE' : '');
     setField(row, 'invoice-label', INVOICE_STATUS_LABELS[sale.invoice.status]);
 
     row.title = `Ver detalle de la venta ${sale.id}`;

@@ -33,6 +33,7 @@ async function main(session: SessionUser): Promise<void> {
   const sellerSelect = byId<HTMLSelectElement>('filter-seller');
   const statusSelect = byId<HTMLSelectElement>('filter-status');
   const paymentSelect = byId<HTMLSelectElement>('filter-payment');
+  const invoiceSelect = byId<HTMLSelectElement>('filter-invoice');
   const dialog = byId<HTMLDialogElement>('sale-dialog');
 
   byId('history-subtitle').textContent = seesAll
@@ -159,6 +160,7 @@ async function main(session: SessionUser): Promise<void> {
       sellerEmail: sellerSelect.value || null,
       status: SALE_STATUSES.find((status) => status === statusSelect.value) ?? null,
       paymentMethod: PAYMENT_METHODS.find((method) => method === paymentSelect.value) ?? null,
+      invoice: invoiceSelect.value === 'with' || invoiceSelect.value === 'without' ? invoiceSelect.value : null,
     };
   }
 
@@ -197,7 +199,7 @@ async function main(session: SessionUser): Promise<void> {
     event.preventDefault();
     void runSearch();
   });
-  for (const control of [fromInput, toInput, sellerSelect, statusSelect, paymentSelect]) {
+  for (const control of [fromInput, toInput, sellerSelect, statusSelect, paymentSelect, invoiceSelect]) {
     control.addEventListener('change', () => void runSearch());
   }
   byId('btn-clear-filters').addEventListener('click', () => {
@@ -205,6 +207,7 @@ async function main(session: SessionUser): Promise<void> {
     sellerSelect.value = '';
     statusSelect.value = '';
     paymentSelect.value = '';
+    invoiceSelect.value = '';
     setDefaultDates();
     void runSearch();
   });

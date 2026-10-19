@@ -51,6 +51,7 @@ export interface UserListActions {
   onRoleChange: (email: string, role: Role) => void;
   onToggleRemove: (email: string) => void;
   onDiscardAdded: (email: string) => void;
+  onResetPassword: (user: Pick<ManagedUser, 'email' | 'name' | 'access'>) => void;
 }
 
 /** Pinta la lista con la búsqueda, el filtro por rol y los cambios pendientes marcados en cada fila. */
@@ -114,6 +115,11 @@ function renderRow(row: Row, isSelf: boolean, actions: UserListActions): HTMLLIE
   removeBtn.title = isSelf ? 'No puedes eliminar tu propia cuenta' : 'Eliminar usuario';
   removeBtn.setAttribute('aria-label', `Eliminar a ${row.name}`);
   removeBtn.addEventListener('click', () => actions.onToggleRemove(row.email));
+
+  // Solo en empleados ya guardados; el popup explica si no aplica (sin correo o cuenta de Google).
+  const resetBtn = item.querySelector<HTMLButtonElement>('[data-action="reset-password"]')!;
+  resetBtn.setAttribute('aria-label', `Reestablecer la contraseña de ${row.name}`);
+  resetBtn.addEventListener('click', () => actions.onResetPassword(row));
 
   const undoBtn = item.querySelector<HTMLButtonElement>('[data-action="undo"]')!;
   undoBtn.title = row.state === 'added' ? 'Quitar de la lista' : 'No eliminar';

@@ -6,6 +6,7 @@ import { describeChanges, PendingChanges } from '../features/users/changes';
 import { setupAddDialog } from '../features/users/add-dialog';
 import { setupConfirmDialog } from '../features/users/confirm-dialog';
 import { renderUserList, type ListFilters } from '../features/users/list';
+import { setupResetDialog } from '../features/users/reset-dialog';
 import { requireSession, type SessionUser } from '../lib/auth';
 import { firestoreErrorMessage } from '../lib/errors';
 import { formatCOP, pluralize } from '../lib/format';
@@ -34,6 +35,7 @@ function main(session: SessionUser): void {
   let users: ManagedUser[] = [];
   const changes = new PendingChanges();
   const filters: ListFilters = { term: '', role: 'all' };
+  const openReset = setupResetDialog();
 
   function render(): void {
     changes.prune(users);
@@ -51,6 +53,7 @@ function main(session: SessionUser): void {
         changes.discardAdded(email);
         render();
       },
+      onResetPassword: openReset,
     });
     byId('save-bar').hidden = changes.count === 0;
     byId('save-bar-text').textContent = `${pluralize(changes.count, 'cambio', 'cambios')} sin guardar`;

@@ -240,6 +240,40 @@
       </form>
     </dialog>
 
+    <!--
+      Reestablecer contraseña. data-kind: email (se envía el enlace) | username (sin correo) | google (la maneja Google).
+      En los dos últimos solo explica por qué no se puede.
+    -->
+    <dialog id="reset-dialog" data-kind="email" aria-labelledby="reset-title" aria-describedby="reset-text"
+      class="group m-auto w-[min(460px,calc(100vw-2rem))] max-h-[calc(100vh-2rem)] rounded-2xl bg-surface-container-low text-on-surface p-0 shadow-2xl backdrop:bg-black/70 backdrop:backdrop-blur-sm">
+      <form id="reset-form" class="flex flex-col">
+        <div class="flex items-start justify-between gap-space-sm p-space-md sm:p-space-lg border-b border-outline-variant/30">
+          <div class="flex items-center gap-space-xs">
+            <span class="p-1.5 rounded-lg flex items-center justify-center bg-primary-container text-on-primary-container
+              group-data-[kind=username]:bg-amber-500/15 group-data-[kind=username]:text-amber-300
+              group-data-[kind=google]:bg-amber-500/15 group-data-[kind=google]:text-amber-300">
+              <span id="reset-icon" class="material-symbols-outlined text-[18px]" aria-hidden="true">lock_reset</span>
+            </span>
+            <h2 id="reset-title" class="font-headline-md text-headline-md font-bold"></h2>
+          </div>
+          <button type="button" data-close-dialog aria-label="Cerrar" class="p-1.5 rounded-lg text-outline hover:text-on-surface hover:bg-surface-container-high flex">
+            <span class="material-symbols-outlined" aria-hidden="true">close</span>
+          </button>
+        </div>
+        <div class="p-space-md sm:p-space-lg flex flex-col gap-space-sm">
+          <p id="reset-text" class="text-on-surface-variant"></p>
+          <p id="reset-hint" class="font-body-sm text-body-sm text-outline"></p>
+          <p id="reset-error" hidden class="font-body-sm text-body-sm text-error"></p>
+        </div>
+        <div class="flex justify-end gap-space-xs p-space-md sm:p-space-lg border-t border-outline-variant/30">
+          <button id="btn-reset-cancel" type="button" data-close-dialog class="px-space-md py-2 rounded-lg bg-surface-container-high hover:bg-surface-bright font-label-md text-label-md">Cancelar</button>
+          <button id="btn-reset-send" type="submit" class="group-data-[kind=username]:hidden group-data-[kind=google]:hidden px-space-md py-2 rounded-lg bg-primary-container hover:bg-secondary-container text-on-primary-container font-label-md text-label-md font-semibold flex items-center gap-1 disabled:opacity-60">
+            <span class="material-symbols-outlined text-[18px]" aria-hidden="true">send</span><span id="btn-reset-send-text">Enviar correo</span>
+          </button>
+        </div>
+      </form>
+    </dialog>
+
     <!-- Una línea del popup de confirmación -->
     <template id="tpl-change">
       <li data-kind="add" class="group flex items-start gap-space-sm p-space-sm rounded-lg bg-surface-container">
@@ -292,6 +326,10 @@
             <option value="sales">Vendedor</option>
             <option value="basic">Básico</option>
           </select>
+          <button type="button" data-action="reset-password" title="Reestablecer contraseña"
+            class="shrink-0 p-2 rounded-lg text-outline hover:text-primary hover:bg-primary/10 transition-colors flex group-data-[state=removed]:hidden group-data-[state=added]:hidden">
+            <span class="material-symbols-outlined text-[20px]" aria-hidden="true">lock_reset</span>
+          </button>
           <button type="button" data-action="remove" title="Eliminar usuario"
             class="shrink-0 p-2 rounded-lg text-outline hover:text-error hover:bg-error-container/20 transition-colors flex disabled:opacity-30 disabled:pointer-events-none group-data-[state=removed]:hidden group-data-[state=added]:hidden">
             <span class="material-symbols-outlined text-[20px]" aria-hidden="true">person_remove</span>

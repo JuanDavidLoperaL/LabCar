@@ -10,6 +10,15 @@ export interface HistoryFilters {
   status: SaleStatus | null;
   /** Forma de pago con que se registró la venta (un crédito cobrado después sigue siendo crédito). */
   paymentMethod: PaymentMethod | null;
+  /** with = solo ventas con factura electrónica; without = solo sin ella; null = todas. */
+  invoice: InvoiceFilter | null;
+}
+
+export type InvoiceFilter = 'with' | 'without';
+
+/** Se pidió factura electrónica (emitida, pendiente o con error), a nombre del cliente o de consumidor final. */
+export function hasElectronicInvoice(sale: Sale): boolean {
+  return sale.invoice.status !== 'not-requested';
 }
 
 export interface HistoryResult {
@@ -78,6 +87,7 @@ export async function searchHistory(filters: HistoryFilters, restrictTo: string 
       matchesTerm(sale, term) &&
       (!filters.status || sale.status === filters.status) &&
       (!filters.paymentMethod || sale.paymentMethod === filters.paymentMethod) &&
+      (!filters.invoice || hasElectronicInvoice(sale) === (filters.invoice === 'with')) &&
       (!sellerEmail || sale.sellers.some((seller) => seller.email === sellerEmail)),
   );
   return {

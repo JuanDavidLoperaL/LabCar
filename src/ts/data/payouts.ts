@@ -38,6 +38,7 @@ function parsePayout(snapshot: DocumentSnapshot): Payout | null {
     coveredTo,
     saleIds: Array.isArray(data.saleIds) ? data.saleIds.filter((id): id is string => typeof id === 'string') : [],
     amount: asNumber(data.amount),
+    loanDeduction: asNumber(data.loanDeduction),
     paidAt,
     paidBy: { email: asString(paidBy?.email), name: asString(paidBy?.name) },
   };
@@ -58,6 +59,8 @@ export interface NewPayout {
   coveredTo: Date;
   saleIds: string[];
   amount: number;
+  /** Préstamos que se descuentan de `amount` (0 si no tiene). */
+  loanDeduction: number;
   paidBy: { email: string; name: string };
 }
 
@@ -82,6 +85,7 @@ export async function createPayout(payout: NewPayout): Promise<void> {
       coveredTo: Timestamp.fromDate(payout.coveredTo),
       saleIds: payout.saleIds,
       amount: payout.amount,
+      loanDeduction: payout.loanDeduction,
       paidAt: serverTimestamp(),
       paidBy: payout.paidBy,
     });

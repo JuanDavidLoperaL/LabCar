@@ -77,7 +77,8 @@ export function renderSummary(sales: readonly Sale[], commissionOf: string | nul
     0,
   );
   setText('summary-count', String(valid.length));
-  setText('summary-total', formatCOP(valid.reduce((total, sale) => total + sale.total, 0)));
+  // El vendedor (rol sales) no tiene la tarjeta de total vendido.
+  if (document.getElementById('summary-total')) setText('summary-total', formatCOP(valid.reduce((total, sale) => total + sale.total, 0)));
   setText(
     'summary-pending',
     formatCOP(valid.filter((sale) => sale.status === 'pending').reduce((total, sale) => total + sale.total, 0)),

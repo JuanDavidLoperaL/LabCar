@@ -44,6 +44,17 @@ export const SERVICE_LIMITS = {
   quickMax: 5,
 } as const;
 
+/** Préstamos a empleados: los mismos límites que un gasto. */
+export const LOAN_LIMITS = {
+  descriptionMin: 3,
+  descriptionMax: 200,
+  amountMax: 50_000_000,
+  /** Días hacia atrás que se pueden usar como fecha del préstamo. */
+  backdateDays: 60,
+  voidReasonMin: 5,
+  voidReasonMax: 200,
+} as const;
+
 /** Límites de un gasto: evitan errores de digitación (un cero de más) y descripciones vacías. */
 export const EXPENSE_LIMITS = {
   descriptionMin: 3,

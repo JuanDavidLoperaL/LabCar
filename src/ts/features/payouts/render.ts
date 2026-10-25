@@ -2,9 +2,12 @@ import { BUSINESS, PAYOUT_TRACKING_START } from '../../config/business';
 import { USERNAME_DOMAIN } from '../../lib/auth';
 import { formatCOP, formatRangeLabel, formatShortDate, formatShortDateTime, formatWeekdayDateTime, initials, pluralize } from '../../lib/format';
 import { ROLE_LABELS, type Role } from '../../lib/roles';
+import { LOAN_CATEGORY_LABELS } from '../../models/loan';
 import type { EmployeeInfo } from '../../models/user';
 import { byId } from '../../ui/dom';
 import { cloneTemplate, field, setField } from '../../ui/template';
+import { LOAN_STATE_LABELS } from '../loans/ledger';
+import { loanDateLabel, loanVoidLabel } from '../loans/render';
 import { formatPhone } from '../receivables/reminder';
 import { formatPlate } from '../sales/plate';
 import { itemsSummary } from '../sales/summary';
@@ -80,7 +83,7 @@ export function renderEmployee(employee: Employee, info: EmployeeInfo | null | u
 // ---------- Estado del pago y cifras ----------
 
 function renderStatus(settlement: Settlement): void {
-  const { status, toPay } = settlement;
+  const { status, netToPay } = settlement;
   const badge = byId('payout-status');
   const icon = byId('payout-status-icon');
   const text = byId('payout-status-text');
@@ -88,7 +91,7 @@ function renderStatus(settlement: Settlement): void {
     case 'pending':
       badge.dataset.state = 'pending';
       icon.textContent = 'schedule';
-      text.textContent = `Pendiente por pagar ${formatCOP(toPay)}`;
+      text.textContent = `Pendiente por pagar ${formatCOP(netToPay)}`;
       break;
     case 'paid':
       badge.dataset.state = 'paid';
@@ -100,7 +103,7 @@ function renderStatus(settlement: Settlement): void {
     case 'deferred':
       badge.dataset.state = 'deferred';
       icon.textContent = 'history_toggle_off';
-      text.textContent = `Acumulado a la próxima semana · ${formatCOP(toPay)}`;
+      text.textContent = `Acumulado a la próxima semana · ${formatCOP(settlement.toPay)}`;
       break;
     case 'empty':
       badge.dataset.state = 'neutral';
@@ -120,7 +123,7 @@ function renderStatus(settlement: Settlement): void {
     const canPay = status.kind === 'pending' || status.kind === 'deferred';
     payButton.disabled = !canPay;
     deferButton.disabled = status.kind !== 'pending';
-    byId('btn-mark-paid-label').textContent = canPay ? `Marcar pagado (${formatCOP(toPay)})` : 'Marcar pagado';
+    byId('btn-mark-paid-label').textContent = canPay ? `Marcar pagado (${formatCOP(netToPay)})` : 'Marcar pagado';
     const hint = actionsHint(status);
     const hintEl = byId('btn-mark-paid-hint');
     hintEl.hidden = hint === null;
@@ -147,13 +150,15 @@ function actionsHint(status: Settlement['status']): string | null {
 }
 
 function toPayCard(settlement: Settlement): { label: string; value: number; detail: string; paid: boolean } {
-  const { status, toPay, weekTotals, carryoverTotal } = settlement;
+  const { status, toPay, netToPay, weekTotals, carryoverTotal, loans } = settlement;
   switch (status.kind) {
     case 'pending': {
-      const detail = carryoverTotal > 0
+      const commission = carryoverTotal > 0
         ? `Semana ${formatCOP(toPay - carryoverTotal)} + saldo de semanas anteriores ${formatCOP(carryoverTotal)}`
         : pluralize(weekTotals.count, 'servicio esta semana', 'servicios esta semana');
-      return { label: 'A pagar', value: toPay, detail, paid: false };
+      // Lo que se le entrega es la comisión menos los préstamos.
+      const detail = loans.deduction > 0 ? `Comisión ${formatCOP(toPay)} − préstamos ${formatCOP(loans.deduction)} · ${commission}` : commission;
+      return { label: 'A pagar', value: netToPay, detail, paid: false };
     }
     case 'paid': {
       if (status.inLaterWeek) {
@@ -161,7 +166,9 @@ function toPayCard(settlement: Settlement): { label: string; value: number; deta
       }
       // Lo vendido después de registrar el pago (antes del corte) pasa a la próxima semana.
       const later = toPay > 0 ? ` · ${formatCOP(toPay)} vendidos después del pago pasan a la próxima semana` : '';
-      return { label: 'Pagado', value: status.payout.amount, detail: `El ${formatShortDate(status.payout.paidAt)}${later}`, paid: true };
+      const { amount, loanDeduction } = status.payout;
+      const discounted = loanDeduction > 0 ? ` · comisión ${formatCOP(amount)} − préstamos ${formatCOP(loanDeduction)}` : '';
+      return { label: 'Pagado', value: amount - loanDeduction, detail: `El ${formatShortDate(status.payout.paidAt)}${discounted}${later}`, paid: true };
     }
     case 'deferred':
       return { label: 'Acumulado a la próxima semana', value: toPay, detail: `Se decidió no pagarlo esta semana (${formatShortDate(status.deferral.deferredAt)})`, paid: false };
@@ -172,12 +179,36 @@ function toPayCard(settlement: Settlement): { label: string; value: number; deta
   }
 }
 
+/**
+ * Tarjeta de préstamos. Semana pagada: lo que se le descontó. Si no: lo que debe hasta el corte y
+ * cuánto de eso se descuenta en este pago (nada si aún no tiene comisiones, p. ej. al empezar la semana).
+ */
+function renderLoansCard(settlement: Settlement): void {
+  const { loans, status } = settlement;
+  const paid = status.kind === 'paid' && !status.inLaterWeek;
+  byId('kpi-loans-label').textContent = paid ? 'Préstamos descontados' : 'Debe en préstamos';
+  byId('kpi-loans-value').textContent = formatCOP(paid ? loans.deduction : loans.balance);
+  let detail: string;
+  if (paid) {
+    detail = loans.remaining > 0 ? `Sigue debiendo ${formatCOP(loans.remaining)}` : 'Sin saldo pendiente de préstamos';
+  } else if (loans.deduction > 0) {
+    detail = `Se descuentan ${formatCOP(loans.deduction)} de este pago` +
+      (loans.remaining > 0 ? ` · quedan ${formatCOP(loans.remaining)} para las próximas semanas` : '');
+  } else {
+    detail = loans.balance > 0 ? 'Se descuenta cuando tenga comisiones por pagar' : 'Sin préstamos pendientes';
+  }
+  byId('kpi-loans-balance').textContent = detail;
+  const { general, store } = loans.weekByCategory;
+  byId('kpi-loans-week').textContent = `Esta semana: ${LOAN_CATEGORY_LABELS.general} ${formatCOP(general)} · ${LOAN_CATEGORY_LABELS.store} ${formatCOP(store)}`;
+}
+
 function renderKpis(settlement: Settlement): void {
   const card = toPayCard(settlement);
   byId('kpi-to-pay').dataset.state = card.paid ? 'paid' : 'pending';
   byId('kpi-to-pay-label').textContent = card.label;
   byId('kpi-to-pay-value').textContent = formatCOP(card.value);
   byId('kpi-to-pay-detail').textContent = card.detail;
+  renderLoansCard(settlement);
 
   const { sold, commission, company, count } = settlement.weekTotals;
   setOptional(document, '#kpi-sold-value', formatCOP(sold));
@@ -274,10 +305,38 @@ function renderOrders(settlement: Settlement, employeeName: string, commissionRa
     'Se paga aunque el cliente aún no haya pagado su crédito. Lo que no se paga en su semana se suma a la siguiente.';
 }
 
+// ---------- Préstamos del empleado ----------
+
+function renderLoanHistory(settlement: Settlement, employeeName: string): void {
+  const { entries } = settlement.loans;
+  byId('loan-history-list').replaceChildren(
+    ...entries.map(({ loan, state, remaining }) => {
+      const item = cloneTemplate<HTMLLIElement>('tpl-loan-history');
+      item.dataset.state = state;
+      item.dataset.category = loan.category;
+      setField(item, 'category', LOAN_CATEGORY_LABELS[loan.category]);
+      setField(item, 'description', loan.description || 'Sin descripción');
+      setField(item, 'date', loanDateLabel(loan));
+      setField(item, 'created-by', loan.createdBy.name || loan.createdBy.email || 'Sin registro');
+      setField(item, 'amount', formatCOP(loan.amount));
+      setField(item, 'state', LOAN_STATE_LABELS[state]);
+      setField(item, 'remaining', state === 'partial' ? `Faltan ${formatCOP(remaining)}` : '');
+      const voidInfo = field(item, 'void-info');
+      voidInfo.hidden = loan.void === null;
+      voidInfo.textContent = loanVoidLabel(loan);
+      return item;
+    }),
+  );
+  byId('loan-history-count').textContent = pluralize(entries.filter((entry) => entry.state !== 'void').length, 'préstamo', 'préstamos');
+  byId('loan-history-empty').hidden = entries.length > 0;
+  byId('loan-history-empty-text').textContent = `${employeeName} no tiene préstamos registrados.`;
+}
+
 export function renderSettlement(settlement: Settlement, employeeName: string, commissionRate: number): void {
   renderStatus(settlement);
   renderKpis(settlement);
   renderOrders(settlement, employeeName, commissionRate);
+  renderLoanHistory(settlement, employeeName);
 }
 
 export function renderRateRule(commissionRate: number): void {
@@ -316,10 +375,13 @@ export function renderPrintSheet(employee: Employee, info: EmployeeInfo | null, 
     ? settlement.week.filter((entry) => entry.state === 'paid').reduce((sum, entry) => sum + entry.commission, 0)
     : settlement.weekTotals.commission;
   const total = ownPayout ? ownPayout.amount : settlement.toPay;
+  const deduction = settlement.loans.deduction;
   byId('print-week-total').textContent = formatCOP(weekCommission);
   byId('print-carryover').textContent = formatCOP(ownPayout ? total - weekCommission : settlement.carryoverTotal);
+  byId('print-loans-row').hidden = deduction === 0;
+  byId('print-loans').textContent = `− ${formatCOP(deduction)}`;
   byId('print-to-pay-label').textContent = ownPayout ? 'Total pagado' : 'Total a pagar';
-  byId('print-to-pay').textContent = formatCOP(total);
+  byId('print-to-pay').textContent = formatCOP(total - deduction);
   byId('print-status').textContent =
     status.kind === 'paid'
       ? `Pagado el ${formatShortDateTime(status.payout.paidAt)} · registró ${status.payout.paidBy.name || status.payout.paidBy.email}`

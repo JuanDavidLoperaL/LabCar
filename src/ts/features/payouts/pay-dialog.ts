@@ -48,10 +48,11 @@ export function setupPayDialog(paidBy: { email: string; name: string }, onPaid: 
         coveredTo: coverage.coveredTo,
         saleIds: coverage.saleIds,
         amount: coverage.amount,
+        loanDeduction: coverage.loanDeduction,
         paidBy,
       });
       dialog.close();
-      showToast(`${employee.name}: pago de ${formatCOP(coverage.amount)} registrado.`, 'check_circle');
+      showToast(`${employee.name}: pago de ${formatCOP(coverage.amount - coverage.loanDeduction)} registrado.`, 'check_circle');
       onPaid();
     } catch (cause) {
       console.error(cause);
@@ -77,7 +78,9 @@ export function setupPayDialog(paidBy: { email: string; name: string }, onPaid: 
     byId('pay-week-amount').textContent = formatCOP(coverage.amount - settlement.carryoverTotal);
     byId('pay-carryover-row').hidden = settlement.carryoverTotal === 0;
     byId('pay-carryover').textContent = formatCOP(settlement.carryoverTotal);
-    byId('pay-total').textContent = formatCOP(coverage.amount);
+    byId('pay-loans-row').hidden = coverage.loanDeduction === 0;
+    byId('pay-loans').textContent = `− ${formatCOP(coverage.loanDeduction)}`;
+    byId('pay-total').textContent = formatCOP(coverage.amount - coverage.loanDeduction);
     byId('pay-help').textContent = week.isCurrent
       ? 'La semana aún no ha cerrado: lo que el empleado venda después de este pago se sumará a la próxima semana.'
       : 'Se registra con la fecha y hora de hoy y no se puede deshacer desde el sistema.';

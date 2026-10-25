@@ -23,6 +23,7 @@ export default defineConfig({
         recibo: resolve(src, 'html/recibo.html'),
         cartera: resolve(src, 'html/cartera.html'),
         gastos: resolve(src, 'html/gastos.html'),
+        prestamos: resolve(src, 'html/prestamos.html'),
         servicios: resolve(src, 'html/servicios.html'),
         pagosVendedores: resolve(src, 'html/pagos-vendedores.html'),
         usuarios: resolve(src, 'html/usuarios.html'),

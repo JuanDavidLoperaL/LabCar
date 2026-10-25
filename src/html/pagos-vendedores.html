@@ -130,9 +130,9 @@
         </section>
 
         <!-- Cifras del empleado en la semana -->
-        <div id="kpi-grid" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-space-md">
+        <div id="kpi-grid" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-[repeat(auto-fit,minmax(14rem,1fr))] gap-space-md">
           <article id="kpi-to-pay" data-state="pending"
-            class="relative overflow-hidden bg-surface-container p-space-md rounded-xl shadow-sm flex flex-col justify-between gap-space-md sm:col-span-2 xl:col-span-1 data-[state=paid]:ring-1 data-[state=paid]:ring-emerald-500/30">
+            class="relative overflow-hidden bg-surface-container p-space-md rounded-xl shadow-sm flex flex-col justify-between gap-space-md data-[state=paid]:ring-1 data-[state=paid]:ring-emerald-500/30">
             <div class="flex items-start justify-between gap-space-sm">
               <div>
                 <h3 id="kpi-to-pay-label" class="font-label-sm text-label-sm text-secondary uppercase tracking-wider mb-1">A pagar</h3>
@@ -143,6 +143,23 @@
               </span>
             </div>
             <p id="kpi-to-pay-detail" data-skeleton class="font-label-sm text-label-sm text-on-surface-variant"></p>
+          </article>
+
+          <!-- Préstamos: lo que debe el empleado y lo que se le resta del pago -->
+          <article id="kpi-loans" class="bg-surface-container p-space-md rounded-xl shadow-sm flex flex-col justify-between gap-space-md">
+            <div class="flex items-start justify-between gap-space-sm">
+              <div>
+                <h3 id="kpi-loans-label" class="font-label-sm text-label-sm text-outline uppercase tracking-wider mb-1">Debe en préstamos</h3>
+                <p class="font-currency-display text-currency-display tracking-tight text-tertiary"><span id="kpi-loans-value" data-skeleton>—</span> <span class="font-label-sm text-label-sm text-outline">COP</span></p>
+              </div>
+              <span class="w-10 h-10 shrink-0 rounded-xl bg-tertiary-container/20 flex items-center justify-center text-tertiary">
+                <span class="material-symbols-outlined text-[22px]" aria-hidden="true">handshake</span>
+              </span>
+            </div>
+            <div class="flex flex-col gap-0.5">
+              <p id="kpi-loans-balance" data-skeleton class="font-label-sm text-label-sm text-on-surface-variant"></p>
+              <p id="kpi-loans-week" data-skeleton class="font-label-sm text-label-sm text-outline"></p>
+            </div>
           </article>
 
           <article data-admin-only class="bg-surface-container p-space-md rounded-xl shadow-sm flex flex-col justify-between gap-space-md">
@@ -229,6 +246,22 @@
             <span id="orders-note"></span>
           </p>
         </section>
+
+        <!-- Préstamos del empleado: todos, con lo que ya se descontó -->
+        <section data-dim-while-loading aria-labelledby="loan-history-title" class="bg-surface-container rounded-xl shadow-md overflow-hidden flex flex-col">
+          <div class="p-space-md flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm bg-surface-container-high/40">
+            <div class="flex items-center gap-space-sm">
+              <h2 id="loan-history-title" class="font-label-lg text-label-lg font-bold">Préstamos</h2>
+              <span id="loan-history-count" class="px-2 py-0.5 rounded font-label-sm text-label-sm bg-surface-container text-on-surface-variant"></span>
+            </div>
+            <p class="text-outline font-label-sm text-label-sm">Se descuentan de las comisiones, del más antiguo al más reciente.</p>
+          </div>
+          <ul id="loan-history-list" class="divide-y divide-surface-container-high/60"></ul>
+          <div id="loan-history-empty" hidden class="flex flex-col items-center text-center gap-space-xs py-space-lg">
+            <span class="material-symbols-outlined text-[36px] text-outline" aria-hidden="true">handshake</span>
+            <p id="loan-history-empty-text" class="text-on-surface-variant"></p>
+          </div>
+        </section>
       </div>
     </main>
 
@@ -250,6 +283,7 @@
             <div class="flex justify-between gap-space-sm"><dt class="text-outline">Empleado</dt><dd id="pay-employee" class="text-right"></dd></div>
             <div class="flex justify-between gap-space-sm"><dt class="text-outline">Comisión de la semana</dt><dd id="pay-week-amount" class="text-right"></dd></div>
             <div id="pay-carryover-row" class="flex justify-between gap-space-sm"><dt class="text-outline">Saldo de semanas anteriores</dt><dd id="pay-carryover" class="text-right"></dd></div>
+            <div id="pay-loans-row" class="flex justify-between gap-space-sm"><dt class="text-outline">Préstamos que se descuentan</dt><dd id="pay-loans" class="text-right text-tertiary"></dd></div>
             <div class="flex justify-between gap-space-sm font-bold text-headline-md pt-1"><dt>Total a pagar</dt><dd id="pay-total" class="text-primary"></dd></div>
           </dl>
           <p id="pay-help" class="font-body-sm text-body-sm text-on-surface-variant"></p>
@@ -328,6 +362,7 @@
       <dl class="ml-auto mt-3 w-72 space-y-1">
         <div class="flex justify-between"><dt>Comisión de la semana</dt><dd id="print-week-total"></dd></div>
         <div class="flex justify-between"><dt>Saldo de semanas anteriores</dt><dd id="print-carryover"></dd></div>
+        <div id="print-loans-row" class="flex justify-between"><dt>Préstamos descontados</dt><dd id="print-loans"></dd></div>
         <div class="flex justify-between border-t border-black pt-1 font-bold text-[14px]"><dt id="print-to-pay-label">Total a pagar</dt><dd id="print-to-pay"></dd></div>
       </dl>
       <p id="print-status" class="mt-3 font-semibold"></p>
@@ -401,6 +436,33 @@
 
     <template id="tpl-order-card-group">
       <li data-field="title" class="px-space-md py-2 bg-surface-container-low font-label-sm text-label-sm uppercase tracking-wider text-secondary"></li>
+    </template>
+
+    <!-- Un préstamo del empleado. data-state: deducted | partial | pending | void -->
+    <template id="tpl-loan-history">
+      <li data-state="pending" data-category="general" class="group p-space-md flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm">
+        <div class="flex flex-col min-w-0">
+          <span class="flex flex-wrap items-center gap-x-space-xs gap-y-0.5">
+            <span data-field="description" class="font-label-md text-label-md font-medium break-words group-data-[state=void]:line-through group-data-[state=void]:text-outline"></span>
+            <span data-field="category" class="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-primary/10 text-primary group-data-[category=store]:bg-amber-500/15 group-data-[category=store]:text-amber-300"></span>
+          </span>
+          <span class="font-label-sm text-label-sm text-outline flex flex-wrap gap-x-1.5">
+            <span data-field="date"></span><span aria-hidden="true">·</span><span>Registró <span data-field="created-by"></span></span>
+          </span>
+          <span data-field="void-info" hidden class="font-label-sm text-label-sm text-error mt-0.5"></span>
+        </div>
+        <div class="flex items-center justify-between sm:justify-end gap-space-md shrink-0">
+          <span class="flex flex-col items-start sm:items-end">
+            <span data-field="state"
+              class="px-2 py-0.5 rounded-full font-label-sm text-label-sm whitespace-nowrap bg-surface-container-high text-on-surface-variant group-data-[state=pending]:bg-amber-500/15 group-data-[state=pending]:text-amber-300 group-data-[state=partial]:bg-secondary-container/25 group-data-[state=partial]:text-secondary group-data-[state=deducted]:bg-emerald-500/15 group-data-[state=deducted]:text-emerald-300"></span>
+            <span data-field="remaining" class="font-label-sm text-label-sm text-outline"></span>
+          </span>
+          <span class="whitespace-nowrap">
+            <span data-field="amount" class="font-headline-md text-headline-md text-tertiary font-bold tracking-tight group-data-[state=void]:line-through group-data-[state=void]:text-outline"></span>
+            <span class="font-label-sm text-label-sm text-outline ml-1">COP</span>
+          </span>
+        </div>
+      </li>
     </template>
 
     <template id="tpl-print-row">

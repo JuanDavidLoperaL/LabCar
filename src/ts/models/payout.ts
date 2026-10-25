@@ -13,8 +13,10 @@ export interface Payout {
   coveredFrom: Date | null;
   coveredTo: Date;
   saleIds: string[];
-  /** Comisión pagada, en pesos. */
+  /** Comisión pagada, en pesos (antes de descontar préstamos). */
   amount: number;
+  /** Préstamos descontados de `amount` en este pago; al empleado se le entregó amount − loanDeduction. 0 en pagos antiguos. */
+  loanDeduction: number;
   paidAt: Date;
   paidBy: { email: string; name: string };
 }

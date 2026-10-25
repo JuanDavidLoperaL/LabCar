@@ -11,7 +11,7 @@ export const ROLE_LABELS: Record<Role, string> = {
 
 /** Qué puede hacer cada rol (se muestra al elegir el rol de un empleado en Usuarios y Roles). */
 export const ROLE_DESCRIPTIONS: Record<Role, string> = {
-  admin: 'Acceso total: panel, cartera, gastos, pagos, servicios y usuarios.',
+  admin: 'Acceso total: panel, cartera, gastos, préstamos, pagos, servicios y usuarios.',
   manager: 'Registra ventas y gastos del día, anula ventas y cobra cartera.',
   sales: 'Registra ventas y ve el historial de todas las ventas.',
   basic: 'Ve solo sus propias ventas en el historial y sus comisiones.',
@@ -56,6 +56,11 @@ export function canSeeSaleCommissions(role: Role): boolean {
   return role !== 'sales';
 }
 
+/** El vendedor (rol sales) no ve cuánto suman las ventas en el historial; los demás roles sí. */
+export function canSeeSalesTotal(role: Role): boolean {
+  return role !== 'sales';
+}
+
 /** Solo admin y manager pueden anular ventas. */
 export function canVoidSales(role: Role): boolean {
   return role === 'admin' || role === 'manager';
@@ -92,6 +97,14 @@ export function canSeeExpenseHistory(role: Role): boolean {
 /** El admin anula cualquier gasto; el manager solo los de hoy (las reglas lo validan). */
 export function canVoidExpense(role: Role, isFromToday: boolean): boolean {
   return role === 'admin' || (role === 'manager' && isFromToday);
+}
+
+/**
+ * Pantalla de Préstamos (registrar y anular): solo el administrador. En Pagos Vendedores todos ven
+ * los préstamos: admin y manager los de cualquier empleado, basic los suyos.
+ */
+export function canAccessLoans(role: Role): boolean {
+  return role === 'admin';
 }
 
 /** Servicios y Clientes (catálogo de servicios y clientes registrados): solo el administrador. */

@@ -1,6 +1,7 @@
 import '../../css/main.css';
 import { DEFAULT_COMMISSION_RATE, PAYOUT_TRACKING_START } from '../config/business';
 import { fetchEmployeeInfo } from '../data/employees';
+import { fetchLoansByEmployee } from '../data/loans';
 import { fetchDeferrals, fetchPayouts } from '../data/payouts';
 import { fetchSalesBySeller } from '../data/sales';
 import { fetchCommissionRate } from '../data/settings';
@@ -132,15 +133,16 @@ async function main(session: SessionUser): Promise<void> {
     renderEmployee(employee, undefined);
     renderLoading(true);
     try {
-      const [payouts, deferrals, info] = await Promise.all([
+      const [payouts, deferrals, loans, info] = await Promise.all([
         fetchPayouts(employee.email),
         fetchDeferrals(employee.email),
+        fetchLoansByEmployee(employee.email),
         loadInfo(employee.email),
       ]);
       const sales = await fetchSalesBySeller(employee.email, settlementRange(week, payouts, PAYOUT_TRACKING_START));
       if (requestId !== latestRequest) return;
 
-      const settlement = buildSettlement({ sellerEmail: employee.email, sales, payouts, deferrals, week, trackingStart: PAYOUT_TRACKING_START });
+      const settlement = buildSettlement({ sellerEmail: employee.email, sales, payouts, deferrals, loans, week, trackingStart: PAYOUT_TRACKING_START });
       current = { employee, week, settlement };
       renderEmployee(employee, info);
       renderSettlement(settlement, employee.name, commissionRate);

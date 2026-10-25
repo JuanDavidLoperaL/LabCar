@@ -40,10 +40,25 @@ export function settlementCsv(settlement: Settlement, includeCompanyShare: boole
     return values.map(cell).join(SEPARATOR);
   };
 
+  // Al final, el resumen con los préstamos que se descuentan de la comisión.
+  const { deduction } = settlement.loans;
+  const { status } = settlement;
+  const ownPayout = status.kind === 'paid' && !status.inLaterWeek ? status.payout : null;
+  const commission = ownPayout ? ownPayout.amount : settlement.toPay;
+  const summary = deduction > 0
+    ? [
+        [],
+        ['Comisión', commission],
+        ['Préstamos descontados', -deduction],
+        [ownPayout ? 'Total pagado' : 'Total a pagar', commission - deduction],
+      ].map((values) => values.map(cell).join(SEPARATOR))
+    : [];
+
   return [
     header.map(cell).join(SEPARATOR),
     ...settlement.carryover.map((entry) => row(entry, 'Anterior sin pagar')),
     ...settlement.week.map((entry) => row(entry, 'Esta semana')),
+    ...summary,
   ].join('\r\n');
 }
 

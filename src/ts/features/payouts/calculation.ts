@@ -1,4 +1,6 @@
+import type { Loan, LoanCategory } from '../../models/loan';
 import type { Payout, PayoutDeferral } from '../../models/payout';
+import { loanEntries, outstandingBalance, totalsByCategory, type LoanEntry } from '../loans/ledger';
 import type { Sale } from '../../models/sale';
 import { splitEvenly } from '../sales/pricing';
 import type { PayoutWeek } from './week';
@@ -12,6 +14,10 @@ import type { PayoutWeek } from './week';
  *
  * Lo que no se paga en su semana queda pendiente y se suma a la siguiente: lo pendiente es todo lo
  * vendido desde el último pago registrado (o desde el inicio del control de pagos).
+ *
+ * Los préstamos del empleado se descuentan de lo que se le paga: al empleado se le entrega
+ * "a pagar" − "préstamos". Si debe más de lo que tiene por cobrar, se descuenta hasta dejarlo en
+ * cero y el resto queda para las semanas siguientes.
  */
 
 /** paid = cubierta por un pago · pending = por pagar · untracked = anterior al control de pagos. */
@@ -59,7 +65,24 @@ export interface PayoutCoverage {
   coveredFrom: Date | null;
   coveredTo: Date;
   saleIds: string[];
+  /** Comisión que cubre, antes de préstamos. */
   amount: number;
+  /** Préstamos que se descuentan de `amount`. */
+  loanDeduction: number;
+}
+
+/** Préstamos del empleado vistos desde la semana que se liquida. */
+export interface LoanSummary {
+  /** Lo que se descuenta en esta liquidación (o lo que se descontó, si ya está pagada). */
+  deduction: number;
+  /** Lo que debía en préstamos hasta el corte, antes de este descuento. */
+  balance: number;
+  /** Lo que sigue debiendo después de este descuento (pasa a las semanas siguientes). */
+  remaining: number;
+  /** Préstamos registrados en esta semana, por tipo. */
+  weekByCategory: Record<LoanCategory, number>;
+  /** Todos los préstamos del empleado con su estado, del más reciente al más antiguo. */
+  entries: LoanEntry[];
 }
 
 export interface Settlement {
@@ -69,8 +92,11 @@ export interface Settlement {
   /** Ventas de semanas anteriores aún sin pagar (se suman a esta). */
   carryover: PayoutEntry[];
   carryoverTotal: number;
-  /** Comisión pendiente hasta el corte de esta semana (semana + saldo anterior). */
+  /** Comisión pendiente hasta el corte de esta semana (semana + saldo anterior), antes de préstamos. */
   toPay: number;
+  loans: LoanSummary;
+  /** Lo que se le entrega al empleado: toPay − préstamos descontados. */
+  netToPay: number;
   status: SettlementStatus;
   /** Solo si se puede registrar el pago de esta semana. */
   coverage: PayoutCoverage | null;
@@ -119,11 +145,13 @@ export interface SettlementInput {
   payouts: readonly Payout[];
   /** Semanas que se decidió acumular. */
   deferrals: readonly PayoutDeferral[];
+  /** Préstamos del empleado (todos, incluidos anulados), del más antiguo al más reciente. */
+  loans: readonly Loan[];
   week: PayoutWeek;
   trackingStart: Date;
 }
 
-export function buildSettlement({ sellerEmail, sales, payouts, deferrals, week, trackingStart }: SettlementInput): Settlement {
+export function buildSettlement({ sellerEmail, sales, payouts, deferrals, loans, week, trackingStart }: SettlementInput): Settlement {
   const unpaidFrom = unpaidSince(payouts, trackingStart);
   const entries = sales
     .map((sale) => toEntry(sale, sellerEmail, unpaidFrom, trackingStart))
@@ -148,8 +176,23 @@ export function buildSettlement({ sellerEmail, sales, payouts, deferrals, week, 
   }
   else status = { kind: 'empty' };
 
+  // Pagada con su propio pago: lo descontado quedó registrado en el pago. Por pagar: lo que debe en
+  // préstamos hasta el corte, sin pasar de la comisión.
+  const balance = outstandingBalance(loans, payouts, end);
+  const payable = status.kind === 'pending' || status.kind === 'deferred';
+  const deduction = status.kind === 'paid' && !status.inLaterWeek
+    ? status.payout.loanDeduction
+    : payable ? Math.min(balance, toPay) : 0;
+  const loanSummary: LoanSummary = {
+    deduction,
+    balance,
+    remaining: payable ? balance - deduction : balance,
+    weekByCategory: totalsByCategory(loans, week.range),
+    entries: loanEntries(loans, payouts).reverse(),
+  };
+
   let coverage: PayoutCoverage | null = null;
-  if (status.kind === 'pending' || status.kind === 'deferred') {
+  if (payable) {
     // Semana en curso: el pago cubre hasta la última venta vista (lo que se venda después queda
     // pendiente para la próxima). Semana cerrada: hasta el corte.
     const latest = pending.reduce((max, entry) => (entry.sale.date > max ? entry.sale.date : max), pending[0].sale.date);
@@ -158,6 +201,7 @@ export function buildSettlement({ sellerEmail, sales, payouts, deferrals, week, 
       coveredTo: week.isCurrent ? new Date(latest.getTime() + 1) : end,
       saleIds: pending.map((entry) => entry.sale.id),
       amount: toPay,
+      loanDeduction: deduction,
     };
   }
 
@@ -167,6 +211,8 @@ export function buildSettlement({ sellerEmail, sales, payouts, deferrals, week, 
     carryover,
     carryoverTotal: sumBy(carryover, (entry) => entry.commission),
     toPay,
+    loans: loanSummary,
+    netToPay: toPay - (payable ? deduction : 0),
     status,
     coverage,
   };

@@ -9,7 +9,7 @@ import { thermalErrorMessage } from '../features/receipt/thermal';
 import { requireSession, type SessionUser } from '../lib/auth';
 import { firestoreErrorMessage } from '../lib/errors';
 import { periodRange, rangeFromDateInputs, toDateInputValue } from '../lib/dates';
-import { canSeeAllSales, canSeeSaleCommissions, canVoidSales } from '../lib/roles';
+import { canSeeAllSales, canSeeSaleCommissions, canSeeSalesTotal, canVoidSales } from '../lib/roles';
 import { PAYMENT_METHODS, SALE_STATUSES, type Sale } from '../models/sale';
 import { byId } from '../ui/dom';
 import { mountShell } from '../ui/shell';
@@ -42,6 +42,7 @@ async function main(session: SessionUser): Promise<void> {
   byId('summary-commission-label').textContent = seesAll ? 'Comisiones' : 'Tu comisión';
   // El vendedor ve todas las ventas, pero no las comisiones de los demás.
   if (!showCommissions) byId('summary-commission-card').remove();
+  if (!canSeeSalesTotal(role)) byId('summary-total-card').remove();
 
   function setDefaultDates(): void {
     const month = periodRange('month');

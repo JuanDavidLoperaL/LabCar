@@ -7,7 +7,7 @@ import { byId } from '../../ui/dom';
 /** Total del mes en ventas con factura electrónica (a nombre del cliente o de consumidor final). Las anuladas no cuentan. */
 export function invoicedTotal(sales: readonly Sale[]): number {
   return sales
-    .filter((sale) => sale.status !== 'void' && sale.invoice.status !== 'not-requested')
+    .filter((sale) => sale.status !== 'void' && sale.invoice.status !== 'not-requested' && sale.invoice.status !== 'voided')
     .reduce((total, sale) => total + sale.total, 0);
 }
 

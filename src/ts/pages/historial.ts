@@ -1,7 +1,9 @@
 import '../../css/main.css';
 import { fetchSale, voidSale } from '../data/sales';
 import { fetchActiveUsers } from '../data/users';
+import { setupInvoiceActions } from '../features/history/invoice-actions';
 import { renderDetail, renderRows, renderSummary } from '../features/history/render';
+import { invoiceErrorMessage, voidSaleInvoice } from '../features/invoicing/service';
 import { searchHistory, type HistoryFilters } from '../features/history/search';
 import { whatsappUrl } from '../features/receipt/content';
 import { printReceipt, printReceiptInBrowser } from '../features/receipt/print';
@@ -9,7 +11,7 @@ import { thermalErrorMessage } from '../features/receipt/thermal';
 import { requireSession, type SessionUser } from '../lib/auth';
 import { firestoreErrorMessage } from '../lib/errors';
 import { periodRange, rangeFromDateInputs, toDateInputValue } from '../lib/dates';
-import { canSeeAllSales, canSeeSaleCommissions, canSeeSalesTotal, canVoidSales } from '../lib/roles';
+import { canRegisterSales, canSeeAllSales, canSeeSaleCommissions, canSeeSalesTotal, canVoidSales } from '../lib/roles';
 import { PAYMENT_METHODS, SALE_STATUSES, type Sale } from '../models/sale';
 import { byId } from '../ui/dom';
 import { mountShell } from '../ui/shell';
@@ -60,10 +62,23 @@ async function main(session: SessionUser): Promise<void> {
   // ---------- Detalle ----------
 
   let current: Sale | null = null;
+  /** Qué anula el formulario: la venta (y su factura, si está emitida) o solo la factura. */
+  let voidMode: 'sale' | 'invoice' = 'sale';
+
+  const renderInvoiceActions = setupInvoiceActions({
+    canOperate: canRegisterSales(role),
+    canVoid,
+    onChange: (sale) => {
+      openDetail(sale);
+      void runSearch();
+    },
+    onRequestVoid: () => openVoidForm('invoice'),
+  });
 
   function openDetail(sale: Sale): void {
     current = sale;
     renderDetail(sale, showCommissions);
+    renderInvoiceActions(sale);
     byId<HTMLAnchorElement>('detail-whatsapp').href = whatsappUrl(sale);
     byId('btn-void').hidden = !canVoid || sale.status === 'void';
     byId('void-form').hidden = true;
@@ -103,12 +118,16 @@ async function main(session: SessionUser): Promise<void> {
   const voidError = byId('void-error');
   const voidConfirm = byId<HTMLButtonElement>('btn-void-confirm');
 
-  byId('btn-void').addEventListener('click', () => {
+  function openVoidForm(mode: 'sale' | 'invoice'): void {
+    voidMode = mode;
     voidForm.hidden = false;
     voidReason.value = '';
     voidError.hidden = true;
+    byId('void-invoice-note').hidden = current?.invoice.status !== 'issued';
+    byId('btn-void-confirm').textContent = mode === 'invoice' ? 'Anular factura' : current?.invoice.status === 'issued' ? 'Anular venta y factura' : 'Anular venta';
     voidReason.focus();
-  });
+  }
+  byId('btn-void').addEventListener('click', () => openVoidForm('sale'));
   byId('btn-void-cancel').addEventListener('click', () => (voidForm.hidden = true));
   voidForm.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -121,6 +140,25 @@ async function main(session: SessionUser): Promise<void> {
     }
     voidConfirm.disabled = true;
     const saleId = current.id;
+    // Factura emitida: primero la nota crédito ante la DIAN; si falla, la venta no se anula.
+    if (current.invoice.status === 'issued') {
+      try {
+        await voidSaleInvoice(current, voidReason.value);
+      } catch (error) {
+        console.error(error);
+        voidError.textContent = `No se pudo anular la factura electrónica: ${invoiceErrorMessage(error)}`;
+        voidError.hidden = false;
+        voidConfirm.disabled = false;
+        return;
+      }
+      if (voidMode === 'invoice') {
+        voidConfirm.disabled = false;
+        showToast(`Factura de la venta ${saleId} anulada con nota crédito.`, 'receipt_long');
+        void runSearch();
+        openDetail(current);
+        return;
+      }
+    }
     try {
       await voidSale(saleId, voidReason.value, email);
     } catch (error) {

@@ -35,7 +35,6 @@ import {
   type PaymentMethod,
   type Sale,
   type SaleCustomer,
-  type SaleInvoice,
   type SalePayment,
   type SettlementMethod,
   type VehicleType,
@@ -347,16 +346,3 @@ export async function voidSale(id: string, reason: string, byEmail: string): Pro
   });
 }
 
-/**
- * Guarda el estado de la factura electrónica de una venta (lo escribe la integración con Alegra).
- * PRUEBAS INTERNAS: hoy lo escribe el navegador; con Firebase Functions lo escribirá el servidor.
- */
-export async function saveSaleInvoice(id: string, invoice: SaleInvoice): Promise<void> {
-  const creditNote: InvoiceCreditNote | null = invoice.creditNote;
-  await updateDoc(doc(salesCollection(), id), {
-    invoice: {
-      ...invoice,
-      creditNote: creditNote ? { ...creditNote, at: Timestamp.fromDate(creditNote.at) } : null,
-    },
-  });
-}

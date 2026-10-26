@@ -1,10 +1,7 @@
 /**
- * Conexión con la API de Alegra (facturación electrónica DIAN).
- *
- * PRUEBAS INTERNAS: por ahora el navegador llama a Alegra con las credenciales de .env.local, así
- * que quedan visibles en el navegador. Este es el ÚNICO archivo que conoce la URL, el correo y el
- * token: al pasar a Firebase Functions, `alegraRequest` se mueve al servidor (con las credenciales
- * como secretos) y en el navegador se reemplaza por una llamada a la Function. Nada más cambia.
+ * Conexión con la API de Alegra (facturación electrónica DIAN). Solo corre en Firebase Functions:
+ * el correo y el token son secretos del servidor (ALEGRA_EMAIL y ALEGRA_TOKEN) y nunca llegan al
+ * navegador. Este es el único archivo que conoce la URL y las credenciales.
  */
 
 const BASE_URL = 'https://api.alegra.com/api/v1';
@@ -23,22 +20,18 @@ export class AlegraError extends Error {
   }
 }
 
+let credentials: { email: string; token: string } | null = null;
+
+/** La Function las pasa en cada llamada, leídas de los secretos. */
+export function configureAlegra(next: { email: string; token: string }): void {
+  credentials = { email: next.email.trim(), token: next.token.trim() };
+}
+
 function authorization(): string {
-  // Solo en `npm run dev`: en el build de producción Vite elimina estas líneas y el token nunca
-  // llega al sitio publicado (un deploy por error no lo expone).
-  const email = import.meta.env.DEV ? (import.meta.env.VITE_ALEGRA_EMAIL as string | undefined) : undefined;
-  const token = import.meta.env.DEV ? (import.meta.env.VITE_ALEGRA_TOKEN as string | undefined) : undefined;
-  if (!email || !token) {
-    throw new AlegraError(
-      import.meta.env.DEV
-        ? 'Faltan las credenciales de Alegra (VITE_ALEGRA_EMAIL y VITE_ALEGRA_TOKEN en .env.local).'
-        : 'La facturación electrónica aún no está disponible en este sitio.',
-      0,
-      null,
-      null,
-    );
+  if (!credentials?.email || !credentials.token) {
+    throw new AlegraError('Faltan las credenciales de Alegra (secretos ALEGRA_EMAIL y ALEGRA_TOKEN).', 0, null, null);
   }
-  return `Basic ${btoa(`${email}:${token}`)}`;
+  return `Basic ${btoa(`${credentials.email}:${credentials.token}`)}`;
 }
 
 /**

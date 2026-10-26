@@ -141,21 +141,6 @@ service cloud.firestore {
         && d.void == null;
     }
 
-    // Factura electrónica (Alegra): solo cambia `invoice` de una venta que la pidió. PRUEBAS INTERNAS:
-    // hoy la escribe el navegador de quien vende; con Firebase Functions la escribirá el servidor y esta
-    // regla se quita. Una factura emitida solo puede pasar a anulada (nota crédito, admin o manager).
-    function isValidInvoiceUpdate() {
-      let before = resource.data.invoice;
-      let after = request.resource.data.invoice;
-      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['invoice'])
-        && before.status != 'not-requested' && before.status != 'voided'
-        && after.keys().hasOnly(['status', 'recipient', 'number', 'cufe', 'pdfUrl', 'error', 'providerId', 'creditNote'])
-        && after.recipient == before.recipient
-        && after.status in ['pending', 'issued', 'error', 'voided']
-        && (before.status != 'issued' || after.status in ['issued', 'voided'])
-        && (after.status != 'voided' || (before.status == 'issued' && hasRole(['admin', 'manager'])));
-    }
-
     // Anulación: solo cambia status → void y registra quién, cuándo y por qué.
     function isValidVoid() {
       let d = request.resource.data;
@@ -440,8 +425,8 @@ service cloud.firestore {
       allow list: if seesAllSales()
         || (hasRole(['basic']) && sessionEmail() in resource.data.sellerEmails);
       allow create: if canSell() && isValidNewSale(saleId);
-      allow update: if (hasRole(['admin', 'manager']) && (isValidVoid() || isValidSettlement()))
-        || (canSell() && isValidInvoiceUpdate());
+      // La factura electrónica (`invoice`) la actualizan las Functions con privilegios de servidor.
+      allow update: if hasRole(['admin', 'manager']) && (isValidVoid() || isValidSettlement());
       allow delete: if false;
     }
 

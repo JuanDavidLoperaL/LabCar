@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "labcar-f04e5"
+    "default": "labcar-f04e5",
+    "cliente": "labcar-f8931"
   }
 }

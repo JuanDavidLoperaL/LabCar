@@ -17,5 +17,21 @@
         "type": 302
       }
     ]
-  }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": [
+        "node_modules",
+        "src",
+        "tsconfig.json",
+        "rolldown.config.mjs",
+        "*.log"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR/..\" run build:functions"
+      ]
+    }
+  ]
 }

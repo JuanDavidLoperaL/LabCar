@@ -17,10 +17,20 @@ export function finalConsumerLabel(sale: Pick<Sale, 'invoice'>): string | null {
   return sale.invoice.recipient === 'final-consumer' ? `${FINAL_CONSUMER.name} · ${FINAL_CONSUMER.documentNumber}` : null;
 }
 
-/** Texto legal sobre la factura electrónica que va al pie del recibo. */
+/**
+ * Enlace de consulta de la factura en la DIAN (el mismo que lleva el QR del PDF de Alegra). Va en el
+ * QR del recibo: al escanearlo, el cliente ve su factura validada. null si no hay factura emitida.
+ */
+export function invoiceQrUrl(sale: Pick<Sale, 'invoice'>): string | null {
+  const { status, cufe } = sale.invoice;
+  return status === 'issued' && cufe ? `https://catalogo-vpfe.dian.gov.co/document/searchqr?documentkey=${encodeURIComponent(cufe)}` : null;
+}
+
+/** Texto legal sobre la factura electrónica que va al pie del recibo (el CUFE va en el QR). */
 export function invoiceNotice(sale: Sale): string {
   if (sale.invoice.status === 'issued' && sale.invoice.number) {
-    return `Factura electrónica N.º ${sale.invoice.number}${sale.invoice.cufe ? ` · CUFE ${sale.invoice.cufe}` : ''}`;
+    const scan = invoiceQrUrl(sale) ? '. Escanea el código para verla en la DIAN' : '';
+    return `Factura electrónica N.º ${sale.invoice.number}${scan}`;
   }
   const status = sale.invoice.status === 'not-requested' ? '' : ` (${INVOICE_STATUS_LABELS[sale.invoice.status].toLowerCase()})`;
   return `Este recibo no es una factura electrónica${status}.`;

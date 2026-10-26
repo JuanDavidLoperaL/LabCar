@@ -1,3 +1,4 @@
+import qrcode from 'qrcode-generator';
 import { BUSINESS } from '../../config/business';
 import { FINAL_CONSUMER } from '../../lib/dian';
 import { formatCOP, formatShortDate, formatShortDateTime } from '../../lib/format';
@@ -6,7 +7,7 @@ import { byId } from '../../ui/dom';
 import { cloneTemplate, field, setField } from '../../ui/template';
 import { formatPlate } from '../sales/plate';
 import { sellersSummary } from '../sales/summary';
-import { businessNit, finalConsumerLabel, invoiceNotice, whatsappUrl } from './content';
+import { businessNit, finalConsumerLabel, invoiceNotice, invoiceQrUrl, whatsappUrl } from './content';
 
 function setText(id: string, text: string): void {
   byId(id).textContent = text;
@@ -65,6 +66,15 @@ export function renderReceipt(sale: Sale): void {
   byId('r-notes-block').hidden = !sale.notes;
   setText('r-notes', sale.notes);
   setText('r-invoice', invoiceNotice(sale));
+  const qrUrl = invoiceQrUrl(sale);
+  const qrImage = byId<HTMLImageElement>('r-invoice-qr');
+  qrImage.hidden = !qrUrl;
+  if (qrUrl) {
+    const code = qrcode(0, 'M');
+    code.addData(qrUrl);
+    code.make();
+    qrImage.src = code.createDataURL(4, 0);
+  }
 
   byId<HTMLAnchorElement>('btn-whatsapp').href = whatsappUrl(sale);
   byId('receipt').hidden = false;

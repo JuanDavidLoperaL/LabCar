@@ -111,6 +111,24 @@ export class Ticket {
     return this;
   }
 
+  /**
+   * Código QR nativo de la impresora (GS ( k, modelo 2, corrección de errores M). `size` es el
+   * tamaño de cada punto (1–16): 6 deja un QR de unos 3 cm, fácil de escanear con el celular.
+   */
+  qr(data: string, size = 6): this {
+    const payload = Array.from(new TextEncoder().encode(data));
+    const length = payload.length + 3;
+    this.bytes.push(
+      GS, 0x28, 0x6b, 0x04, 0x00, 0x31, 0x41, 0x32, 0x00, // modelo 2
+      GS, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x43, size, // tamaño del punto
+      GS, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x45, 0x31, // corrección M (15%)
+      GS, 0x28, 0x6b, length & 0xff, length >> 8, 0x31, 0x50, 0x30, ...payload, // guardar datos
+      GS, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x51, 0x30, // imprimir
+      LF,
+    );
+    return this;
+  }
+
   /** Avanza el papel y lo corta (corte parcial: la tirilla queda colgando y se arranca fácil). */
   cut(): this {
     this.bytes.push(LF, LF, LF, GS, 0x56, 0x41, 0x00);

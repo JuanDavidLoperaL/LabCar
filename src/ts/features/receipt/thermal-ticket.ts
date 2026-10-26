@@ -5,7 +5,7 @@ import { formatCOP, formatShortDate, formatShortDateTime } from '../../lib/forma
 import { PAYMENT_METHOD_LABELS, VEHICLE_TYPE_LABELS, type Sale } from '../../models/sale';
 import { formatPlate } from '../sales/plate';
 import { sellersSummary } from '../sales/summary';
-import { businessNit, invoiceNotice } from './content';
+import { businessNit, invoiceNotice, invoiceQrUrl } from './content';
 import { columns, imageToRaster, LINE_WIDTH, Ticket, wrap } from './escpos';
 
 /** Ancho del logo en puntos (la TM-m30II imprime 576 puntos en papel de 80 mm). */
@@ -78,6 +78,8 @@ export async function buildReceiptTicket(sale: Sale): Promise<string> {
   }
   ticket.separator().align('center');
   ticket.lines(wrap(invoiceNotice(sale)));
+  const qrUrl = invoiceQrUrl(sale);
+  if (qrUrl) ticket.line().qr(qrUrl);
   ticket.line().bold(true).line('¡Gracias por confiar en LAB CAR!').bold(false);
   ticket.cut();
   return ticket.toBase64();

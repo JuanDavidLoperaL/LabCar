@@ -76,11 +76,11 @@ export const TAX_REGIMES = ['not-vat-responsible', 'vat-responsible'] as const;
 export type TaxRegime = (typeof TAX_REGIMES)[number];
 
 /**
- * Estado de la factura electrónica (DIAN vía Siigo):
- * not-requested → no se pidió · pending → en cola para enviarse a Siigo ·
- * issued → emitida · error → Siigo la rechazó (ver `error`).
+ * Estado de la factura electrónica (DIAN vía Alegra):
+ * not-requested → no se pidió · pending → falta emitirla · issued → aceptada por la DIAN ·
+ * error → no se pudo emitir (ver `error`; se puede reintentar) · voided → anulada con nota crédito.
  */
-export const INVOICE_STATUSES = ['not-requested', 'pending', 'issued', 'error'] as const;
+export const INVOICE_STATUSES = ['not-requested', 'pending', 'issued', 'error', 'voided'] as const;
 export type InvoiceStatus = (typeof INVOICE_STATUSES)[number];
 
 export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
@@ -88,20 +88,34 @@ export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
   pending: 'Factura electrónica pendiente',
   issued: 'Factura electrónica emitida',
   error: 'Error en factura electrónica',
+  voided: 'Factura electrónica anulada',
 };
 
 /** customer = con los datos del cliente · final-consumer = a nombre de "consumidor final". */
 export const INVOICE_RECIPIENTS = ['customer', 'final-consumer'] as const;
 export type InvoiceRecipient = (typeof INVOICE_RECIPIENTS)[number];
 
+/** Nota crédito con la que se anuló una factura ya emitida (en Colombia no se puede borrar). */
+export interface InvoiceCreditNote {
+  /** ID de la nota crédito en el proveedor. */
+  id: string;
+  number: string | null;
+  cufe: string | null;
+  at: Date;
+  reason: string;
+}
+
 export interface SaleInvoice {
   status: InvoiceStatus;
   recipient: InvoiceRecipient | null;
-  /** Datos que llenará la integración con Siigo al emitir. */
+  /** Número de la factura (ej. "FE1"); se llena al emitir. */
   number: string | null;
   cufe: string | null;
   pdfUrl: string | null;
   error: string | null;
+  /** ID de la factura en el proveedor (Alegra): existe desde que se crea el borrador. */
+  providerId: string | null;
+  creditNote: InvoiceCreditNote | null;
 }
 
 /**

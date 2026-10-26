@@ -30,10 +30,12 @@ import {
   SETTLEMENT_METHODS,
   TAX_REGIMES,
   VEHICLE_TYPES,
+  type InvoiceCreditNote,
   type InvoiceRecipient,
   type PaymentMethod,
   type Sale,
   type SaleCustomer,
+  type SaleInvoice,
   type SalePayment,
   type SettlementMethod,
   type VehicleType,
@@ -69,6 +71,18 @@ function parsePayment(raw: Raw | null): SalePayment | null {
     at,
     method: asOneOf(raw.method, SETTLEMENT_METHODS, 'cash'),
     by: { email: asString(by?.email), name: asString(by?.name) },
+  };
+}
+
+function parseCreditNote(note: Raw | null): InvoiceCreditNote | null {
+  const at = asDate(note?.at);
+  if (!note || !at || typeof note.id !== 'string') return null;
+  return {
+    id: note.id,
+    number: typeof note.number === 'string' ? note.number : null,
+    cufe: typeof note.cufe === 'string' ? note.cufe : null,
+    at,
+    reason: asString(note.reason),
   };
 }
 
@@ -119,6 +133,8 @@ export function parseSale(snapshot: DocumentSnapshot): Sale | null {
       cufe: typeof invoice?.cufe === 'string' ? invoice.cufe : null,
       pdfUrl: typeof invoice?.pdfUrl === 'string' ? invoice.pdfUrl : null,
       error: typeof invoice?.error === 'string' ? invoice.error : null,
+      providerId: typeof invoice?.providerId === 'string' ? invoice.providerId : null,
+      creditNote: parseCreditNote(asRecord(invoice?.creditNote)),
     },
     notes: asString(data.notes),
     createdBy: { email: asString(createdBy?.email), name: asString(createdBy?.name) },
@@ -284,7 +300,7 @@ export async function createSale(sale: NewSale, requestId: string): Promise<stri
       payment: null,
       customer: sale.customer,
       invoice: {
-        // "pending" = en cola para Siigo; la integración actualizará number/cufe/pdfUrl/error.
+        // "pending" = falta emitirla; la integración con Alegra llena number/cufe/pdfUrl/error.
         status: sale.invoiceRecipient ? 'pending' : 'not-requested',
         recipient: sale.invoiceRecipient,
         number: null,
@@ -328,5 +344,19 @@ export async function voidSale(id: string, reason: string, byEmail: string): Pro
   await updateDoc(doc(salesCollection(), id), {
     status: 'void',
     void: { at: serverTimestamp(), by: byEmail, reason: reason.trim() },
+  });
+}
+
+/**
+ * Guarda el estado de la factura electrónica de una venta (lo escribe la integración con Alegra).
+ * PRUEBAS INTERNAS: hoy lo escribe el navegador; con Firebase Functions lo escribirá el servidor.
+ */
+export async function saveSaleInvoice(id: string, invoice: SaleInvoice): Promise<void> {
+  const creditNote: InvoiceCreditNote | null = invoice.creditNote;
+  await updateDoc(doc(salesCollection(), id), {
+    invoice: {
+      ...invoice,
+      creditNote: creditNote ? { ...creditNote, at: Timestamp.fromDate(creditNote.at) } : null,
+    },
   });
 }

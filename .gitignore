@@ -9,3 +9,6 @@ service-account*.json
 
 # Respaldos de datos de producción (scripts/reset-sales.ts)
 backups/
+
+# Credenciales locales (Alegra): nunca al repositorio
+.env.local

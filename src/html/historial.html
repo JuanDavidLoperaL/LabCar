@@ -165,6 +165,41 @@
           <div class="flex justify-between text-outline"><dt>Factura electrónica</dt><dd id="detail-invoice" class="text-on-surface text-right"></dd></div>
         </dl>
 
+        <!-- Factura electrónica (Alegra): los botones se muestran según el estado y el rol -->
+        <section id="invoice-actions" hidden aria-label="Factura electrónica" class="flex flex-col gap-space-xs p-space-sm rounded-xl bg-surface-container">
+          <p id="invoice-detail" class="font-body-sm text-body-sm text-on-surface-variant break-words"></p>
+          <div class="flex flex-wrap gap-space-xs">
+            <button id="btn-invoice-issue" type="button" class="px-space-sm py-1.5 rounded-lg bg-primary-container text-on-primary-container font-label-md text-label-md font-semibold flex items-center gap-1 disabled:opacity-60">
+              <span class="material-symbols-outlined text-[18px]" aria-hidden="true">send</span><span id="btn-invoice-issue-label">Emitir factura</span>
+            </button>
+            <button id="btn-invoice-preview" type="button" class="px-space-sm py-1.5 rounded-lg bg-surface-container-high hover:bg-surface-bright font-label-md text-label-md flex items-center gap-1 disabled:opacity-60">
+              <span class="material-symbols-outlined text-[18px]" aria-hidden="true">preview</span>Vista previa
+            </button>
+            <button id="btn-invoice-pdf" type="button" class="px-space-sm py-1.5 rounded-lg bg-surface-container-high hover:bg-surface-bright font-label-md text-label-md flex items-center gap-1 disabled:opacity-60">
+              <span class="material-symbols-outlined text-[18px]" aria-hidden="true">picture_as_pdf</span>Ver PDF
+            </button>
+            <button id="btn-invoice-email" type="button" class="px-space-sm py-1.5 rounded-lg bg-surface-container-high hover:bg-surface-bright font-label-md text-label-md flex items-center gap-1 disabled:opacity-60">
+              <span class="material-symbols-outlined text-[18px]" aria-hidden="true">mail</span>Enviar por correo
+            </button>
+            <button id="btn-invoice-refresh" type="button" class="px-space-sm py-1.5 rounded-lg bg-surface-container-high hover:bg-surface-bright font-label-md text-label-md flex items-center gap-1 disabled:opacity-60">
+              <span class="material-symbols-outlined text-[18px]" aria-hidden="true">sync</span>Consultar
+            </button>
+            <button id="btn-invoice-void" type="button" class="px-space-sm py-1.5 rounded-lg text-error hover:bg-error-container/20 font-label-md text-label-md flex items-center gap-1 disabled:opacity-60">
+              <span class="material-symbols-outlined text-[18px]" aria-hidden="true">receipt_long</span>Anular factura
+            </button>
+            <button id="btn-invoice-delete" type="button" class="px-space-sm py-1.5 rounded-lg text-error hover:bg-error-container/20 font-label-md text-label-md flex items-center gap-1 disabled:opacity-60">
+              <span class="material-symbols-outlined text-[18px]" aria-hidden="true">delete</span>Eliminar borrador
+            </button>
+          </div>
+          <form id="invoice-email-form" hidden novalidate class="flex flex-wrap items-center gap-space-xs">
+            <label for="invoice-email" class="sr-only">Correo</label>
+            <input id="invoice-email" type="email" autocomplete="off" placeholder="correo@cliente.com"
+              class="flex-1 min-w-48 h-9 px-space-sm bg-surface-container-lowest rounded-lg focus:outline-none focus:ring-1 focus:ring-primary" />
+            <button id="btn-invoice-email-send" type="submit" class="px-space-sm h-9 rounded-lg bg-primary-container text-on-primary-container font-label-md text-label-md font-semibold disabled:opacity-60">Enviar</button>
+          </form>
+          <p id="invoice-message" hidden role="status" class="font-body-sm text-body-sm"></p>
+        </section>
+
         <div>
           <h3 class="font-label-sm text-label-sm text-outline uppercase tracking-wider mb-space-xs">Vendedores<span id="detail-rate-wrapper"> y comisión (<span id="detail-rate"></span>)</span></h3>
           <ul id="detail-sellers" class="flex flex-col gap-1"></ul>
@@ -185,6 +220,7 @@
         <!-- Anulación -->
         <form id="void-form" hidden class="flex flex-col gap-space-xs p-space-sm rounded-xl bg-surface-container">
           <label for="void-reason" class="font-label-md text-label-md">Motivo de la anulación *</label>
+          <p id="void-invoice-note" hidden class="font-body-sm text-body-sm text-tertiary">La factura electrónica ya fue emitida: se anulará con una nota crédito ante la DIAN.</p>
           <textarea id="void-reason" rows="2" maxlength="200" required class="w-full p-space-sm bg-surface-container-lowest rounded-lg focus:outline-none focus:ring-1 focus:ring-primary resize-none"></textarea>
           <p id="void-error" hidden class="font-body-sm text-body-sm text-error"></p>
           <div class="flex justify-end gap-space-xs">

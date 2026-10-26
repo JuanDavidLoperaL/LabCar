@@ -1,5 +1,6 @@
 import { BUSINESS } from '../../config/business';
 import { createSale, type NewSale } from '../../data/sales';
+import { issueInvoiceForSale } from '../invoicing/service';
 import { errorCode, firestoreErrorMessage } from '../../lib/errors';
 import { businessNit, whatsappUrl } from '../receipt/content';
 import { printReceipt, printReceiptInBrowser } from '../receipt/print';
@@ -392,16 +393,27 @@ export function mountSalePage(session: SessionUser, { users, services, commissio
     }
     saved = true;
     setStep('save', 'done', `Venta ${saleId} guardada`);
-    setStep(
-      'invoice',
-      sale.invoiceRecipient ? 'done' : 'skipped',
-      sale.invoiceRecipient ? 'Factura electrónica en cola (se emitirá al activar Siigo)' : 'Sin factura electrónica',
-    );
-
     byId('success-order').textContent = `Orden ${saleId}`;
-    byId('success-invoice').textContent = sale.invoiceRecipient
-      ? 'La factura electrónica quedó pendiente y se enviará a la DIAN cuando la integración con Siigo esté activa.'
-      : 'Se registró sin factura electrónica.';
+    if (sale.invoiceRecipient) {
+      setStep('invoice', 'active', 'Emitiendo la factura electrónica…');
+      const invoice = await issueInvoiceForSale(saleId).catch((error: unknown) => {
+        console.error(error);
+        return null;
+      });
+      if (invoice?.status === 'issued') {
+        const number = invoice.number ? ` ${invoice.number}` : '';
+        setStep('invoice', 'done', `Factura electrónica${number} emitida`);
+        byId('success-invoice').textContent = `La factura electrónica${number} fue aceptada por la DIAN.`;
+      } else {
+        const reason = invoice?.error ?? 'No se pudo emitir.';
+        setStep('invoice', 'error', `Factura no emitida: ${reason}`);
+        byId('success-invoice').textContent = `La venta quedó guardada, pero la factura electrónica no se emitió (${reason}). Reintenta desde el historial.`;
+        showToast('La factura electrónica no se emitió. Puedes reintentar desde el historial.', 'warning');
+      }
+    } else {
+      setStep('invoice', 'skipped', 'Sin factura electrónica');
+      byId('success-invoice').textContent = 'Se registró sin factura electrónica.';
+    }
     byId<HTMLAnchorElement>('btn-history').href = `/html/historial.html?venta=${encodeURIComponent(saleId)}`;
     // Imprimir en la térmica (QZ Tray); si falla, aparece el respaldo con el diálogo del navegador.
     const printBtn = byId<HTMLButtonElement>('btn-print');

@@ -19,6 +19,7 @@ const INVOICE_ICONS: Record<InvoiceStatus, string> = {
   pending: 'schedule_send',
   issued: 'verified',
   error: 'error',
+  voided: 'block',
 };
 
 function setText(id: string, text: string): void {

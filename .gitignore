@@ -12,3 +12,6 @@ backups/
 
 # Credenciales locales (Alegra): nunca al repositorio
 .env.local
+
+# Functions empaquetadas (se generan al desplegar)
+functions/lib/

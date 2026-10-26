@@ -1,0 +1,14 @@
+{
+  "name": "labcar-functions",
+  "private": true,
+  "description": "Firebase Functions de LAB CAR: facturación electrónica con Alegra (las credenciales viven aquí, nunca en el navegador).",
+  "type": "module",
+  "main": "lib/index.js",
+  "engines": {
+    "node": "22"
+  },
+  "dependencies": {
+    "firebase-admin": "^14.5.0",
+    "firebase-functions": "^7.4.0"
+  }
+}

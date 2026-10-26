@@ -1,5 +1,8 @@
 import type { PaymentMethod, Sale, SaleCustomer } from '../../models/sale';
 
+/** Lo que se necesita de una venta para facturarla (así el servidor no depende del modelo completo). */
+export type InvoiceSale = Pick<Sale, 'id' | 'date' | 'items' | 'total' | 'paymentMethod' | 'plate' | 'vehicleLine'>;
+
 /**
  * Conversión de una venta de LAB CAR al formato de Alegra. Lógica pura (sin Firebase, DOM ni red):
  * se puede llevar tal cual a Firebase Functions.
@@ -120,7 +123,7 @@ export function contactPayload(customer: SaleCustomer): AlegraContactPayload {
 }
 
 /** Líneas de la factura: cada servicio con su precio y su descuento (LAB CAR no cobra IVA). */
-export function invoiceLines(sale: Sale, itemIds: ReadonlyMap<string, string>): AlegraLine[] {
+export function invoiceLines(sale: InvoiceSale, itemIds: ReadonlyMap<string, string>): AlegraLine[] {
   return sale.items.map((item) => {
     const id = itemIds.get(item.name);
     if (!id) throw new Error(`Falta el ítem de Alegra para "${item.name}".`);
@@ -143,7 +146,7 @@ export function belongsToSale(anotation: string, saleId: string): boolean {
  * Factura en borrador: se crea así para comparar su total con el de la venta antes de enviarla a
  * la DIAN. La numeración es la preferida de la cuenta (la resolución vigente).
  */
-export function invoicePayload(sale: Sale, clientId: string, itemIds: ReadonlyMap<string, string>, creditDays: number): AlegraInvoicePayload {
+export function invoicePayload(sale: InvoiceSale, clientId: string, itemIds: ReadonlyMap<string, string>, creditDays: number): AlegraInvoicePayload {
   const credit = sale.paymentMethod === 'credit';
   return {
     date: alegraDate(sale.date),
@@ -159,7 +162,7 @@ export function invoicePayload(sale: Sale, clientId: string, itemIds: ReadonlyMa
 
 /** Nota crédito que anula por completo una factura ya emitida ante la DIAN. */
 export function voidCreditNotePayload(
-  sale: Sale,
+  sale: InvoiceSale,
   invoiceId: string,
   clientId: string,
   itemIds: ReadonlyMap<string, string>,

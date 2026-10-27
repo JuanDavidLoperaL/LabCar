@@ -89,6 +89,21 @@ export async function ensureItems(names: readonly string[]): Promise<Map<string,
   return ids;
 }
 
+// ---------- IVA ----------
+
+let vatTaxId: string | null = null;
+
+/** ID del impuesto "IVA 19%" en la cuenta de Alegra (se busca una vez por instancia). */
+export async function ensureVatTax(): Promise<string> {
+  if (vatTaxId) return vatTaxId;
+  const taxes = await alegraRequest<unknown[]>('GET', '/taxes');
+  const vat = taxes.map(record).find((tax) => text(tax.type) === 'IVA' && Number(tax.percentage) === 19 && tax.status !== 'inactive');
+  const id = vat ? text(vat.id) : null;
+  if (!id) throw new AlegraError('No existe el impuesto "IVA 19%" en Alegra.', 0, null, null);
+  vatTaxId = id;
+  return id;
+}
+
 // ---------- Facturas ----------
 
 export interface AlegraInvoiceSummary {

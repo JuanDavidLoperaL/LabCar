@@ -5,6 +5,7 @@ import {
   emailInvoice,
   ensureClient,
   ensureItems,
+  ensureVatTax,
   getInvoice,
   previewInvoice,
   stampInvoice,
@@ -29,12 +30,13 @@ export function invoiceErrorMessage(error: unknown): string {
 }
 
 async function buildPayload(sale: ServerSale) {
-  const [clientId, itemIds, days] = await Promise.all([
+  const [clientId, itemIds, vatTaxId, days] = await Promise.all([
     ensureClient(sale.invoice.recipient === 'customer' ? sale.customer : null),
     ensureItems(sale.items.map((item) => item.name)),
+    ensureVatTax(),
     overdueDays(),
   ]);
-  return { clientId, itemIds, payload: invoicePayload(sale, clientId, itemIds, days) };
+  return { clientId, itemIds, vatTaxId, payload: invoicePayload(sale, clientId, itemIds, vatTaxId, days) };
 }
 
 async function save(sale: ServerSale, patch: Partial<SaleInvoice>): Promise<SaleInvoice> {
@@ -138,8 +140,8 @@ export async function email(sale: ServerSale, to: string): Promise<void> {
  */
 export async function voidWithCreditNote(sale: ServerSale, reason: string): Promise<SaleInvoice> {
   if (sale.invoice.status !== 'issued' || !sale.invoice.providerId) return sale.invoice;
-  const { clientId, itemIds } = await buildPayload(sale);
-  const note = await createCreditNote(voidCreditNotePayload(sale, sale.invoice.providerId, clientId, itemIds, reason, new Date()));
+  const { clientId, itemIds, vatTaxId } = await buildPayload(sale);
+  const note = await createCreditNote(voidCreditNotePayload(sale, sale.invoice.providerId, clientId, itemIds, vatTaxId, reason, new Date()));
   return save(sale, {
     status: 'voided',
     creditNote: { id: note.id, number: note.number, cufe: note.cufe, at: new Date(), reason: reason.trim() },

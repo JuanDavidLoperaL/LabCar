@@ -34,6 +34,12 @@ export const MAX_OVERDUE_DAYS = 365;
  * Tope mensual de facturación electrónica, mientras el administrador no lo cambie (settings/invoicing).
  * Al llegar al tope en el mes, Nueva Venta muestra una alerta; no impide seguir facturando.
  */
+/**
+ * IVA de los servicios. Los precios de LAB CAR YA lo incluyen: la factura electrónica muestra la base
+ * (precio ÷ 1,19) más el IVA, y el total es el mismo que se cobra.
+ */
+export const VAT_RATE = 0.19;
+
 export const DEFAULT_INVOICE_MONTHLY_LIMIT = 6_000_000;
 export const MAX_INVOICE_MONTHLY_LIMIT = 10_000_000_000;
 
